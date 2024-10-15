@@ -1,17 +1,20 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const LoginForm = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const navigate = useNavigate(); // Initialize navigation
 
     const handleLogin = (e) => {
         e.preventDefault();
 
-        // Simulated login check (you can replace this with an API call)
+        // Simulated login check (replace with API call)
         if (username === "admin" && password === "password123") {
             alert("Login successful!");
             setError("");
+            navigate("/dashboard"); // Redirect to dashboard on success
         } else {
             setError("Invalid username or password.");
         }
