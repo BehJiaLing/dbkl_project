@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./navbar";
 import Sidebar from "./sidebar";
@@ -9,6 +9,13 @@ const Dashboard = () => {
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const [activeContent, setActiveContent] = useState("overview"); // Default to "overview"
     const navigate = useNavigate(); 
+
+    useEffect(() => {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+            navigate("/error"); 
+        }
+    }, [navigate]);
 
     const toggleSidebar = () => {
         setIsSidebarVisible(!isSidebarVisible);
