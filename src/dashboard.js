@@ -7,8 +7,8 @@ import DataDetailsContent from "./dash_data-details";
 
 const Dashboard = () => {
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-    const [activeContent, setActiveContent] = useState("overview"); // Default to "overview"
-    const navigate = useNavigate(); 
+    const [activeContent, setActiveContent] = useState("overview");
+    const navigate = useNavigate();
 
     useEffect(() => {
         const token = localStorage.getItem("authToken");
@@ -18,29 +18,37 @@ const Dashboard = () => {
     }, [navigate]);
 
     const toggleSidebar = () => {
-        setIsSidebarVisible(!isSidebarVisible);
+        setIsSidebarVisible(prevState => !prevState);
     };
 
     const handleMenuClick = (menuItem) => {
         if (menuItem === "logout") {
             localStorage.removeItem("authToken"); 
-            navigate("/login");
+            navigate("/login"); 
         } else {
-            setActiveContent(menuItem);
+            setActiveContent(menuItem); 
         }
     };
 
     const renderContent = () => {
-        if (activeContent === "overview") {
-            return <OverviewContent />;
-        } else if (activeContent === "details") {
-            return <DataDetailsContent />;
-        } 
+        switch (activeContent) {
+            case "overview":
+                return <OverviewContent />;
+            case "details":
+                return <DataDetailsContent />;
+            default:
+                return null; 
+        }
     };
 
     return (
         <div style={styles.dashboardContainer}>
-            <Navbar onMenuClick={handleMenuClick} toggleSidebar={toggleSidebar} />
+            <Navbar
+                onMenuClick={handleMenuClick}
+                toggleSidebar={toggleSidebar}
+                isSidebarVisible={isSidebarVisible} 
+                activeContent={activeContent}
+            />
 
             <div style={styles.mainContent}>
                 <div

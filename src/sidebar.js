@@ -7,13 +7,11 @@ const Sidebar = ({ isSidebarVisible }) => {
             transform: isSidebarVisible ? "translateX(0)" : "translateX(100%)"
         }}>
             <h2>Analysis Graph</h2>
-            {/* Placeholder for Graph */}
             <div style={styles.graphPlaceholder}>Graph goes here</div>
         </div>
     );
 };
 
-// Inline styles for Sidebar component
 const styles = {
     sidebar: {
         width: "30%",
