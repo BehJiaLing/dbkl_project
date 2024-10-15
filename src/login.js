@@ -1,17 +1,19 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom"; 
 
 const LoginForm = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const navigate = useNavigate(); // Initialize navigation
+    const navigate = useNavigate(); 
 
     const handleLogin = (e) => {
         e.preventDefault();
 
         // Simulated login check (replace with API call)
         if (username === "admin" && password === "password123") {
+            const token = "your_generated_token"; // Simulated token generation
+            localStorage.setItem("authToken", token); // Store token in localStorage
             alert("Login successful!");
             setError("");
             navigate("/dashboard"); // Redirect to dashboard on success
