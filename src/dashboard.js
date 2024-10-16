@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "./navbar";
-import Sidebar from "./sidebar";
+import Navbar from "./components/navbar";
+import Sidebar from "./components/sidebar";
 import OverviewContent from "./dash_overview";
 import DataDetailsContent from "./dash_data-details";
 
@@ -13,20 +13,38 @@ const Dashboard = () => {
     useEffect(() => {
         const token = localStorage.getItem("authToken");
         if (!token) {
-            navigate("/error"); 
+            navigate("/error");
         }
     }, [navigate]);
 
+    useEffect(() => {
+        const savedSidebarVisibility = localStorage.getItem("isSidebarVisible");
+        const savedActiveContent = localStorage.getItem("activeContent");
+
+        if (savedSidebarVisibility) {
+            setIsSidebarVisible(JSON.parse(savedSidebarVisibility)); 
+        }
+
+        if (savedActiveContent) {
+            setActiveContent(savedActiveContent);
+        }
+    }, []); 
+
     const toggleSidebar = () => {
-        setIsSidebarVisible(prevState => !prevState);
+        setIsSidebarVisible((prevState) => {
+            const newState = !prevState;
+            localStorage.setItem("isSidebarVisible", JSON.stringify(newState)); 
+            return newState;
+        });
     };
 
     const handleMenuClick = (menuItem) => {
         if (menuItem === "logout") {
-            localStorage.removeItem("authToken"); 
-            navigate("/login"); 
+            localStorage.removeItem("authToken");
+            navigate("/login");
         } else {
-            setActiveContent(menuItem); 
+            setActiveContent(menuItem);
+            localStorage.setItem("activeContent", menuItem); 
         }
     };
 
@@ -37,7 +55,7 @@ const Dashboard = () => {
             case "details":
                 return <DataDetailsContent />;
             default:
-                return null; 
+                return null;
         }
     };
 
@@ -46,7 +64,7 @@ const Dashboard = () => {
             <Navbar
                 onMenuClick={handleMenuClick}
                 toggleSidebar={toggleSidebar}
-                isSidebarVisible={isSidebarVisible} 
+                isSidebarVisible={isSidebarVisible}
                 activeContent={activeContent}
             />
 
@@ -54,13 +72,13 @@ const Dashboard = () => {
                 <div
                     style={{
                         ...styles.contentContainer,
-                        width: isSidebarVisible ? "70%" : "100%", 
+                        width: isSidebarVisible ? "70%" : "100%",
                     }}
                 >
                     {renderContent()}
                 </div>
 
-                {isSidebarVisible && <Sidebar isSidebarVisible={isSidebarVisible} />}
+                {isSidebarVisible && <Sidebar />}
             </div>
         </div>
     );
