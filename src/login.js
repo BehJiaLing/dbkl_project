@@ -23,6 +23,7 @@ const LoginForm = () => {
     };
 
     return (
+        <div style={styles.pageWrapper}>
         <div style={styles.container}>
             <h2>Login</h2>
             <form onSubmit={handleLogin}>
@@ -50,16 +51,27 @@ const LoginForm = () => {
                 <button type="submit" style={styles.button}>Login</button>
             </form>
         </div>
-    );
+    </div>
+);
 };
 
 // Inline styles
 const styles = {
+    pageWrapper:{
+        height: "100vh",  
+        display: "flex",
+        justifyContent: "flex-end",
+        alignItems: "center",
+        backgroundImage: "url('/assets/login/background.png')",  
+        backgroundSize: "cover", 
+        backgroundPosition: "center",  
+        backgroundRepeat: "no-repeat",
+        paddingRight: "100px",
+    },
     container: {
         maxWidth: "300px",
-        margin: "100px auto",
         padding: "20px",
-        border: "1px solid #ccc",
+        backgroundColor: "rgba(255, 255, 255, 0.8)",
         borderRadius: "10px",
         textAlign: "center",
     },
