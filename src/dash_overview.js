@@ -1,39 +1,38 @@
-import React from "react";
+import React, { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import axios from 'axios';
 
-const MapContent = ({ isSidebarVisible }) => {
+const OverviewContent = () => {
+    const [users, setUsers] = useState([]);
+
+    useEffect(() => {
+        axios.get('http://localhost:3001/api/user/user-data')
+            .then(response => {
+                console.log(response.data);
+                setUsers(response.data);
+            })
+            .catch(error => {
+                console.error('Error fetching user data:', error);
+            });
+    }, []);
+
     return (
-        <div
-            style={{
-                ...styles.mapContainer,
-                width: isSidebarVisible ? "70%" : "100%", 
-            }}
-        >
-            <h2>Map View</h2>
-            <div style={styles.mapPlaceholder}>Map goes here</div>
-        </div>
+        <MapContainer center={[5.4141, 100.3288]} zoom={13} style={{ height: '400px', width: '100%' }}>
+            <TileLayer
+                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            {/* Check if users is an array before mapping */}
+            {Array.isArray(users) && users.map((user, index) => (
+                <Marker key={index} position={[user.latitude, user.longitude]}>
+                    <Popup>
+                        {user.username} <br /> Latitude: {user.latitude} <br /> Longitude: {user.longitude}
+                    </Popup>
+                </Marker>
+            ))}
+        </MapContainer>
     );
 };
 
-const styles = {
-    mapContainer: {
-        padding: "20px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#f4f4f4",
-        transition: "width 0.3s ease", 
-    },
-    mapPlaceholder: {
-        width: "100%",
-        height: "400px",
-        backgroundColor: "lightgray",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: "8px",
-        marginTop: "20px",
-    },
-};
-
-export default MapContent;
+export default OverviewContent;
