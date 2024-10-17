@@ -6,7 +6,8 @@ const ChartController = {
             const chartData = await ChartModel.getChartData();
             res.json(chartData); // Send the data in JSON format
         } catch (error) {
-            res.status(500).json({ message: 'Error fetching chart data' });
+            console.error('Error fetching chart data:', error); // Log the error details
+            res.status(500).json({ message: 'Error fetching chart data', error: error.message });
         }
     }
 };

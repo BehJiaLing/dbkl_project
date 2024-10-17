@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PolarArea } from 'react-chartjs-2';
 import { Chart, ArcElement, RadialLinearScale, Tooltip, Legend } from 'chart.js';
+import axios from 'axios';  
 
-// Register necessary chart elements
 Chart.register(ArcElement, RadialLinearScale, Tooltip, Legend);
 
 const PolarAreaChart = () => {
@@ -28,26 +28,17 @@ const PolarAreaChart = () => {
     });
 
     useEffect(() => {
-        // Fetch data from backend
         const fetchData = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/status'); // Make sure this is the correct endpoint
-                const data = await response.json();
+                const response = await axios.get("http://localhost:3001/api/chart/chart-data"); 
+                console.log("Chart Data:", response.data); 
 
-                // Assuming data format from the backend is something like [{status: 'red', count: 5}, {status: 'yellow', count: 8}, ...]
-                const statusData = {
-                    red: data.find(item => item.status === 'red')?.count || 0,
-                    yellow: data.find(item => item.status === 'yellow')?.count || 0,
-                    green: data.find(item => item.status === 'green')?.count || 0,
-                };
-
-                // Update chart data with fetched data
                 setChartData(prevState => ({
                     ...prevState,
                     datasets: [
                         {
                             ...prevState.datasets[0],
-                            data: [statusData.red, statusData.yellow, statusData.green], // Update with fetched values
+                            data: [response.data.red, response.data.yellow, response.data.green], 
                         },
                     ],
                 }));
@@ -56,8 +47,8 @@ const PolarAreaChart = () => {
             }
         };
 
-        fetchData(); // Call the fetch function
-    }, []); // Empty dependency array means this runs once on mount
+        fetchData();
+    }, []);
 
     const options = {
         responsive: true,
