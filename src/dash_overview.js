@@ -21,20 +21,20 @@ const OverviewContent = () => {
     useEffect(() => {
         axios.get('http://localhost:3001/api/user/user-data')
             .then(async response => {
-                console.log(response.data);
                 setUsers(response.data);
 
-                // Fetch addresses for each user
+                // Fetch addresses for each user using their userId as the unique key
                 const addressPromises = response.data.map(async (user) => {
                     const address = await getAddressFromCoordinates(user.latitude, user.longitude);
-                    return { username: user.username, address };
+                    return { ic: user.ic, address }; // Use userId as the unique key
                 });
 
                 const addressesArray = await Promise.all(addressPromises);
                 const addressesMap = addressesArray.reduce((acc, curr) => {
-                    acc[curr.username] = curr.address;
+                    acc[curr.ic] = curr.address; // Store address by userId
                     return acc;
                 }, {});
+                console.log(addressesMap);
                 setAddresses(addressesMap);
             })
             .catch(error => {
@@ -45,7 +45,7 @@ const OverviewContent = () => {
     const getAddressFromCoordinates = async (latitude, longitude) => {
         try {
             const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-            return response.data.display_name;
+            return response.data.display_name || 'Address not found';
         } catch (error) {
             console.error('Error fetching address:', error);
             return 'Address not found';
@@ -59,12 +59,10 @@ const OverviewContent = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
             {Array.isArray(users) && users.map((user, index) => (
-                <Marker key={index} position={[user.latitude, user.longitude]} icon={customMarkerIcon}>
+                <Marker key={user.ic} position={[user.latitude, user.longitude]} icon={customMarkerIcon}>
                     <Popup>
                         Name: {user.username} <br />
-                        Address: {addresses[user.username] || 'Fetching address...'} <br />
-                        {/* Latitude: {user.latitude} <br />
-                        Longitude: {user.longitude} */}
+                        Address: {addresses[user.ic] || 'Fetching address...'}
                     </Popup>
                 </Marker>
             ))}
