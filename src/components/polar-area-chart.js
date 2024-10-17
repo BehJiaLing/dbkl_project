@@ -2,19 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { PolarArea } from 'react-chartjs-2';
 import { Chart, ArcElement, RadialLinearScale, Tooltip, Legend } from 'chart.js';
 
+// Register necessary chart elements
 Chart.register(ArcElement, RadialLinearScale, Tooltip, Legend);
 
 const PolarAreaChart = () => {
     const [chartData, setChartData] = useState({
-        labels: ['Red', 'Yellow', 'Green'], // Initial static labels
+        labels: ['Red', 'Yellow', 'Green'],
         datasets: [
             {
                 label: 'Status',
-                data: [50,20,30], // Initial empty dataset, will be updated with fetched data
+                data: [0, 0, 0], // Default data
                 backgroundColor: [
-                    'rgba(255, 99, 132, 0.6)', // Red
-                    'rgba(255, 206, 86, 0.6)', // Yellow
-                    'rgba(75, 192, 192, 0.6)'  // Green
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)'
                 ],
                 borderColor: [
                     'rgba(255, 99, 132, 1)',
@@ -26,47 +27,37 @@ const PolarAreaChart = () => {
         ],
     });
 
-    const [loading, setLoading] = useState(true);
-
-    // Simulated data fetching from database
-    const fetchData = async () => {
-        try {
-            // Replace with your actual API call
-            const response = await fetch("/api/status-data"); // Adjust endpoint accordingly
-            const data = await response.json();
-
-            // Assuming the data structure is { green: number, red: number, yellow: number }
-            setChartData({
-                labels: ['Red', 'Yellow', 'Green'], // Labels remain the same
-                datasets: [
-                    {
-                        label: 'Status',
-                        data: [data.red, data.yellow, data.green], // Update with actual values
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.6)', // Red
-                            'rgba(255, 206, 86, 0.6)', // Yellow
-                            'rgba(75, 192, 192, 0.6)'  // Green
-                        ],
-                        borderColor: [
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(255, 206, 86, 1)',
-                            'rgba(75, 192, 192, 1)'
-                        ],
-                        borderWidth: 1,
-                    },
-                ],
-            });
-
-            setLoading(false);
-        } catch (error) {
-            console.error('Error fetching chart data:', error);
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchData(); // Fetch data when the component mounts
-    }, []);
+        // Fetch data from backend
+        const fetchData = async () => {
+            try {
+                const response = await fetch('http://localhost:3001/api/status'); // Make sure this is the correct endpoint
+                const data = await response.json();
+
+                // Assuming data format from the backend is something like [{status: 'red', count: 5}, {status: 'yellow', count: 8}, ...]
+                const statusData = {
+                    red: data.find(item => item.status === 'red')?.count || 0,
+                    yellow: data.find(item => item.status === 'yellow')?.count || 0,
+                    green: data.find(item => item.status === 'green')?.count || 0,
+                };
+
+                // Update chart data with fetched data
+                setChartData(prevState => ({
+                    ...prevState,
+                    datasets: [
+                        {
+                            ...prevState.datasets[0],
+                            data: [statusData.red, statusData.yellow, statusData.green], // Update with fetched values
+                        },
+                    ],
+                }));
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        };
+
+        fetchData(); // Call the fetch function
+    }, []); // Empty dependency array means this runs once on mount
 
     const options = {
         responsive: true,
@@ -98,11 +89,7 @@ const PolarAreaChart = () => {
 
     return (
         <div style={styles.chartContainer}>
-            {loading ? (
-                <p>Loading...</p>
-            ) : (
-                <PolarArea data={chartData} options={options} />
-            )}
+            <PolarArea data={chartData} options={options} />
         </div>
     );
 };
