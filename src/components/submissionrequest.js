@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const FailedVerification = () => {
+const SubmissionRequest = () => {
     const [selectedTries, setSelectedTries] = useState('all');
 
     const handleTriesChange = (e) => {
@@ -22,4 +22,4 @@ const FailedVerification = () => {
 };
 
 
-export default FailedVerification;
+export default SubmissionRequest;
