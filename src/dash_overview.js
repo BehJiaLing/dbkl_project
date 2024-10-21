@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import L from 'leaflet';
-import greenIcon from 'leaflet/dist/images/green_icon.png'; 
+import greenIcon from 'leaflet/dist/images/green-icon.png'; 
 import redIcon from 'leaflet/dist/images/red_icon.png';
 import yellowIcon from 'leaflet/dist/images/yellow_icon.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
