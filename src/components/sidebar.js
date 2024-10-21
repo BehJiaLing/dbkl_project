@@ -1,5 +1,5 @@
 import PolarAreaChart from "./polar-area-chart";
-import FailedVerification from "./failedverification";
+import SubmissionRequest from "./submissionrequest";
 
 const Sidebar = () => {
     return (
@@ -10,8 +10,8 @@ const Sidebar = () => {
                     <PolarAreaChart />
                 </div>
                 <div>
-                    <h3>Failed Verification</h3>
-                    <FailedVerification />
+                    <h3>Submission Request</h3>
+                    <SubmissionRequest />
                 </div>
             </div>
         </div>
