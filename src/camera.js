@@ -69,7 +69,7 @@ const CameraPage = () => {
     };
 
     return (
-        <div style={styles.pageWrapper}>
+        <div style={styles.pageWrapper}>    
             <div style={styles.container}>
                 {isImageCaptured ? (
                     <>
