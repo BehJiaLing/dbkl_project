@@ -96,7 +96,6 @@ const styles = {
         overflow: "hidden",
     },
     contentContainer: {
-        padding: "20px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
