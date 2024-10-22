@@ -1,24 +1,39 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const LoginForm = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const [showPassword, setShowPassword] = useState(false); 
-    const navigate = useNavigate(); 
+    const [showPassword, setShowPassword] = useState(false);
+    const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
 
-        if (username === "admin" && password === "password123") {
-            const token = "your_generated_token";
-            localStorage.setItem("authToken", token); 
-            alert("Login successful!");
-            setError("");
-            navigate("/dashboard"); 
-        } else {
-            setError("Invalid username or password.");
+        try {
+            const response = await axios.get("http://localhost:3001/api/login/login-data");
+
+            // console.log(response.data); // Array of user objects
+
+            // Check if any user matches the entered username and password
+            const foundUser = response.data.find(
+                (user) => user.username === username && user.password === password
+            );
+
+            if (foundUser) {
+                const token = "your_generated_token";
+                localStorage.setItem("authToken", token);
+                alert("Login successful!");
+                setError("");
+                navigate("/dashboard"); 
+            } else {
+                setError("Invalid username or password.");
+            }
+        } catch (error) {
+            setError("Login failed. Please check your credentials.");
+            console.error("Error during login:", error);
         }
     };
 
@@ -68,18 +83,18 @@ const LoginForm = () => {
 // Inline styles
 const styles = {
     pageWrapper: {
-        height: "100vh",  
+        height: "100vh",
         display: "flex",
         justifyContent: "flex-end",
         paddingRight: "250px",
         alignItems: "center",
-        backgroundImage: "url('/assets/login/background.png')",  
+        backgroundImage: "url('/assets/login/background.png')",
         backgroundColor: "#2d2d3a",
-        backgroundSize: "cover", 
-        backgroundPosition: "center",  
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
     },
-    
+
     container: {
         maxWidth: "300px",
         width: "100%",
@@ -89,18 +104,18 @@ const styles = {
         textAlign: "left",
     },
     title: {
-        fontSize: "32px",         
-        color: "white",    
+        fontSize: "32px",
+        color: "white",
         marginTop: "10px",
-        marginBottom: "10px",     
+        marginBottom: "10px",
     },
     subTitle: {
-        fontSize: "20px",        
-        color: "white",   
-        marginTop: "10px",      
-        marginBottom: "15px",    
-    }, 
-    
+        fontSize: "20px",
+        color: "white",
+        marginTop: "10px",
+        marginBottom: "15px",
+    },
+
     inputGroup: {
         marginBottom: "10px",
         textAlign: "left",
@@ -141,11 +156,11 @@ const styles = {
     showPasswordContainer: {
         display: "flex",
         alignItems: "center",
-        marginTop: "5px", 
+        marginTop: "5px",
     },
 
     checkbox: {
-        marginRight: "10px", 
+        marginRight: "10px",
     },
 
     checkboxLabel: {
