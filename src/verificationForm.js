@@ -3,25 +3,19 @@ import { useNavigate } from "react-router-dom";
 
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
-    const [image, setImage] = useState(null);
     const [error, setError] = useState("");
     const navigate = useNavigate();
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        setImage(file); // Capture the image from file input (camera or file picker)
+    const handleCameraNavigation = () => {
+        navigate("/camera"); // Redirect to the Camera page
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
         // Simulated verification check (replace with actual API call)
-        if (ic && image) {
-            const formData = new FormData();
-            formData.append("ic", ic);
-            formData.append("image", image);
-
-            // Simulated API call, replace with your actual call
+        if (ic) {
+            // Here you can perform the actual verification logic
             alert("Verification successful!");
             setError("");
             navigate("/dashboard"); // Redirect to dashboard on success
@@ -33,8 +27,8 @@ const VerifyForm = () => {
     return (
         <div style={styles.pageWrapper}>
             <div style={styles.container}>
-                <h2>Verify</h2>
-                <p>Please fill in your credentials</p>
+                <h2 style={styles.title}>Verify</h2>
+                <p style={styles.subtitle}>Please fill in your credentials</p>
                 <form onSubmit={handleSubmit}>
                     <div style={styles.inputGroup}>
                         <label>IC:</label>
@@ -47,18 +41,12 @@ const VerifyForm = () => {
                         />
                     </div>
                     <div style={styles.inputGroup}>
-                        <label>Upload Image (or take a picture):</label>
-                        <input
-                            type="file"
-                            onChange={handleImageUpload}
-                            style={styles.fileInput}
-                            accept="image/*"
-                            capture="environment"  // This triggers the camera for rear-facing
-                            required
-                        />
+                        <button type="button" onClick={handleCameraNavigation} style={styles.button}>
+                            Upload Image
+                        </button>
                     </div>
                     {error && <p style={styles.error}>{error}</p>}
-                    <button type="submit" style={styles.button}>Submit</button>
+                    <button type="submit" style={styles.submitButton}>Submit</button>
                 </form>
             </div>
         </div>
@@ -68,49 +56,72 @@ const VerifyForm = () => {
 // Inline styles
 const styles = {
     pageWrapper: {
-        height: "100vh",
+        height: "100vh",  
         display: "flex",
         justifyContent: "flex-end",
+        paddingRight: "250px",
         alignItems: "center",
-        backgroundImage: "url('/assets/login/background.png')",  // Use your provided background
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundImage: "url('/assets/login/background.png')",  
+        backgroundColor: "#2d2d3a",
+        backgroundSize: "cover", 
+        backgroundPosition: "center",  
         backgroundRepeat: "no-repeat",
-        paddingRight: "100px",
     },
     container: {
         maxWidth: "300px",
+        width: "100%",
         padding: "20px",
-        backgroundColor: "rgba(255, 255, 255, 0.8)",
+        backgroundColor: "#3e3e4f",
         borderRadius: "10px",
-        textAlign: "center",
+        textAlign: "left",
+    },
+    title: {
+        color: "white",  // Change title to white
+        marginBottom: "10px",
+    },
+    subtitle: {
+        color: "white",  // Change subtitle to white
+        marginBottom: "20px",
     },
     inputGroup: {
-        marginBottom: "15px",
+        marginBottom: "30px",
+        textAlign: "left",
+        color: "white",
     },
     input: {
         width: "100%",
-        padding: "8px",
+        padding: "10px",
         marginTop: "5px",
+        backgroundColor: "#494959",
         borderRadius: "5px",
-        border: "1px solid #ccc",
-    },
-    fileInput: {
-        width: "100%",
-        padding: "8px",
-        marginTop: "5px",
-        borderRadius: "5px",
-        border: "1px solid #ccc",
-        backgroundColor: "#f9f9f9",
+        border: "none",
+        color: "white",
+        fontSize: "16px",
+        height: "35px",
+        boxSizing: "border-box",
     },
     button: {
-        width: "100%",
+        width: "40%", 
         padding: "10px",
-        backgroundColor: "#4CAF50",
+        backgroundColor: "#3e3e4f",
         color: "white",
-        border: "none",
+        border: "2px solid white",  
         borderRadius: "5px",
         cursor: "pointer",
+        marginLeft: "1%",  
+    },
+    
+    submitButton: {
+        width: "70%",
+        padding: "10px",
+        backgroundColor: "#00b3a7",
+        color: "white",
+        border: "none",
+        borderRadius: "50px",
+        cursor: "pointer",
+        marginTop: "55px",
+        margin: "0 auto",
+        display: "block",
     },
     error: {
         color: "red",
