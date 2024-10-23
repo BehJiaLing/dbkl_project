@@ -124,9 +124,12 @@ const OverviewContent = () => {
     // Filter users based on search and selected status filter
     const filteredUsers = users.filter((user) => {
         const userAddress = addresses[user.ic] || {};
+        const userFullAddress = user.address || ''; // Get user.address
+
         const matchesSearch =
             user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (userAddress.display_name && userAddress.display_name.toLowerCase().includes(searchQuery.toLowerCase()));
+            (userAddress.display_name && userAddress.display_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            userFullAddress.toLowerCase().includes(searchQuery.toLowerCase()); // Check user.address
 
         const matchesStatus = filter === 'all' || user.status === filter;
 
@@ -177,11 +180,25 @@ const OverviewContent = () => {
                                     <div>
                                         Name: {user.username} <br />
                                         Staus: {user.status.toUpperCase()} <br />
-                                        Location Name: {addresses[user.ic]?.name || 'Fetching name...'} <br />
+                                        {user.address && (
+                                            <>
+                                                Location: {user.address} <br />
+                                            </>
+                                        )}
+                                        {/* Location Name: {addresses[user.ic]?.name || 'Fetching name...'} <br /> */}
                                         {/* Full Address: {addresses[user.ic]?.display_name || 'Fetching address...'} <br /> */}
-                                        {addresses[user.ic]?.name && (
+                                        {/* {addresses[user.ic]?.name && (
                                             <a
                                                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addresses[user.ic]?.name || `${user.latitude},${user.longitude}`)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                View on Google Maps
+                                            </a>
+                                        )} */}
+                                        {user.address && (
+                                            <a
+                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(user.address || `${user.latitude},${user.longitude}`)}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
@@ -238,7 +255,7 @@ const OverviewContent = () => {
                         </select>
                         <input
                             type="text"
-                            placeholder="Search by username or address..."
+                            placeholder="Search by name, location name or address..."
                             value={searchQuery}
                             onChange={handleSearchChange}
                             style={styles.searchInput}
@@ -251,7 +268,7 @@ const OverviewContent = () => {
                 <table style={styles.table}>
                     <thead>
                         <tr>
-                            <th style={styles.th}>Username</th>
+                            <th style={styles.th}>Name</th>
                             <th style={styles.th}>Status</th>
                             <th style={styles.th}>Location Name</th>
                             <th style={styles.th}>Full Address</th>
@@ -263,8 +280,9 @@ const OverviewContent = () => {
                             return (
                                 <tr key={user.ic}>
                                     <td style={styles.td}>{user.username}</td>
-                                    <td style={styles.td}>{user.status}</td>
-                                    <td style={styles.td}>{userAddress.name || 'Fetching name...'}</td>
+                                    <td style={styles.td}>{user.status.toUpperCase()}</td>
+                                    {/* <td style={styles.td}>{userAddress.name || 'Fetching name...'}</td> */}
+                                    <td style={styles.td}>{user.address}</td>
                                     <td style={styles.td}>{userAddress.display_name || 'Fetching address...'}</td>
                                 </tr>
                             );
