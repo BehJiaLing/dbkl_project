@@ -7,10 +7,21 @@ const LoginForm = () => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false); 
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
+
+        setError("");
+
+        if (!username || !password) {
+            setError("Both username and password are required.");
+            return;
+        }
+
+        setIsLoading(true); // Start loading
+
 
         try {
             const response = await axios.get("http://localhost:3001/api/login/login-data");
@@ -27,13 +38,16 @@ const LoginForm = () => {
                 localStorage.setItem("authToken", token);
                 alert("Login successful!");
                 setError("");
+                setIsLoading(false);
                 navigate("/dashboard"); 
             } else {
                 setError("Invalid username or password.");
+                setIsLoading(false);
             }
         } catch (error) {
             setError("Login failed. Please check your credentials.");
             console.error("Error during login:", error);
+            setIsLoading(false);
         }
     };
 
@@ -73,7 +87,9 @@ const LoginForm = () => {
                         </div>
                     </div>
                     {error && <p style={styles.error}>{error}</p>}
-                    <button type="submit" style={styles.button}>Login</button>
+                    <button type="submit" style={styles.button} disabled={isLoading}>
+                        {isLoading ? "Logging in..." : "Login"}
+                    </button>
                 </form>
             </div>
         </div>
