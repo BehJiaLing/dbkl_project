@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
@@ -7,20 +7,27 @@ const VerifyForm = () => {
     const navigate = useNavigate();
 
     const handleCameraNavigation = () => {
-        navigate("/camera"); // Redirect to the Camera page
+        // Only the Upload Image button navigates to the camera page
+        navigate("/camera");
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Simulated verification check (replace with actual API call)
-        if (ic) {
-            // Here you can perform the actual verification logic
-            alert("Verification successful!");
-            setError("");
-            navigate("/dashboard"); // Redirect to dashboard on success
-        } else {
-            setError("Please fill in all fields.");
+    
+        try {
+            const response = await fetch(`/api/user/verifyIC?ic=${ic}`);
+            const data = await response.json();
+    
+            if (data.exists) {
+                alert("Submitted successfully!");
+                setError("");
+                navigate("/dashboard");
+            } else {
+                setError("Please fill in a valid IC.");
+            }
+        } catch (error) {
+            console.error("Error verifying IC:", error);
+            setError("Something went wrong, please try again.");
         }
     };
 
