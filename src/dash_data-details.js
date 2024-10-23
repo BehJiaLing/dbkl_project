@@ -1,9 +1,67 @@
-import React, { useState } from "react";
-import PointFilter from "./components/pointfilter";
+import React, { useState, useEffect } from "react";
+import PointFilter from "./components/pointfilter"; // Assuming you have this component
+import axios from "axios";
 
 const DataDetailsContent = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [filter, setFilter] = useState("all");
+    const [data, setData] = useState([]); // This will hold data fetched from the database
+    const [loading, setLoading] = useState(true); // To track loading state
+    const [error, setError] = useState(null); // To track any errors
+    const [addresses, setAddresses] = useState({}); // State to hold fetched addresses
+
+    // Fetch data from the backend
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await axios.get('http://localhost:3001/api/user/user-data'); // Fetch data from backend
+                const mappedData = response.data.map(item => ({
+                    personName: item.username,
+                    ic: item.ic,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                    pointType: item.status, // Mapping 'status' to 'pointType'
+                    uploadedTime: new Date().toLocaleString(), // Example timestamp
+                }));
+                setData(mappedData);
+
+                // Fetch addresses after getting the data
+                const addressPromises = mappedData.map(async (item) => {
+                    const address = await getAddressFromCoordinates(item.latitude, item.longitude);
+                    return { ic: item.ic, address }; // Map the address to the user's IC
+                });
+
+                const addressesArray = await Promise.all(addressPromises); // Wait for all addresses to be fetched
+                const addressesMap = addressesArray.reduce((acc, curr) => {
+                    acc[curr.ic] = curr.address;
+                    return acc;
+                }, {});
+
+                setAddresses(addressesMap); // Set the fetched addresses in the state
+
+                setLoading(false);
+            } catch (err) {
+                setError(err.message);
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Function to fetch address using nominatim openstreetmap API
+    const getAddressFromCoordinates = async (latitude, longitude) => {
+        try {
+            const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+            return {
+                name: response.data.name || 'Name not found', // Location name
+                display_name: response.data.display_name || 'Address not found' // Full address
+            };
+        } catch (error) {
+            console.error('Error fetching address:', error);
+            return { name: 'Name not found', display_name: 'Address not found' };
+        }
+    };
 
     const handleSearch = (event) => {
         setSearchTerm(event.target.value);
@@ -13,84 +71,24 @@ const DataDetailsContent = () => {
         setFilter(event.target.value);
     };
 
-    
-    const data = [
-        {
-            personName: "John Doe",
-            ic: "123456-78-9101",
-            locationName: "Location A",
-            address: "123 Main St, City, Country",
-            coordinates: "3.1390, 101.6869",
-            uploadedTime: "2024-10-16 10:00 AM",
-            pointType: "green",
-        },
-        {
-            personName: "Jane Smith",
-            ic: "987654-32-1098",
-            locationName: "Location B",
-            address: "456 Side St, Another City, Country",
-            coordinates: "2.9264, 101.6964",
-            uploadedTime: "2024-10-15 2:30 PM",
-            pointType: "red",
-        },
-        {
-            personName: "Alex Green",
-            ic: "321654-98-7654",
-            locationName: "Location C",
-            address: "789 Park Ave, Another City, Country",
-            coordinates: "4.0000, 101.3000",
-            uploadedTime: "2024-10-15 3:00 PM",
-            pointType: "yellow",
-        },
-        {
-            personName: "Jack Lim",
-            ic: "111111-22-3333",
-            locationName: "Location D",
-            address: "222 Moo St, Moo City, Country",
-            coordinates: "6.1390, 101.6869",
-            uploadedTime: "2024-11-16 11:00 AM",
-            pointType: "green",
-        },
-        {
-            personName: "Jennie Kim",
-            ic: "888888-88-8888",
-            locationName: "Location E",
-            address: "333 Main DD, DD City, Country",
-            coordinates: "3.2290, 101.6869",
-            uploadedTime: "2024-12-16 8:00 AM",
-            pointType: "green",
-        },
-        {
-            personName: "Jessy J",
-            ic: "232323-66-6666",
-            locationName: "Location F",
-            address: "888 Main St, City, Country",
-            coordinates: "7.1390, 101.6869",
-            uploadedTime: "2024-4-16 7:00 AM",
-            pointType: "green",
-        },
-        {
-            personName: "Mc Tan",
-            ic: "555555-55-5555",
-            locationName: "Location G",
-            address: "12 Tmn St, City, Country",
-            coordinates: "9.1390, 101.6869",
-            uploadedTime: "2024-2-16 4:00 PM",
-            pointType: "green",
-        },
-    ];
-
+    // Filter the data based on the search term and the selected point filter
     const filteredData = data.filter((item) => {
         const matchesSearchTerm =
-            item.personName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.ic.includes(searchTerm) ||
-            item.locationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.address.toLowerCase().includes(searchTerm.toLowerCase());
+            (item.personName && item.personName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (item.ic && typeof item.ic === "string" && item.ic.includes(searchTerm));
 
         const matchesFilter = filter === "all" || item.pointType === filter;
 
         return matchesSearchTerm && matchesFilter;
     });
+
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
+    if (error) {
+        return <div>Error: {error}</div>;
+    }
 
     return (
         <div style={styles.container}>
@@ -102,10 +100,9 @@ const DataDetailsContent = () => {
                         type="text"
                         value={searchTerm}
                         onChange={handleSearch}
-                        placeholder="Search"
+                        placeholder="Search by name, IC, location, or address"
                         style={styles.searchInput}
                     />
-                    <span style={styles.searchIcon}>🔍</span>
                 </div>
 
                 {/* Point Filter Component aligned to the right */}
@@ -120,22 +117,33 @@ const DataDetailsContent = () => {
                             <th style={styles.th}>Person Name</th>
                             <th style={styles.th}>IC</th>
                             <th style={styles.th}>Location Name</th>
-                            <th style={styles.th}>Address</th>
+                            <th style={styles.th}>Full Address</th>
                             <th style={styles.th}>Coordinates</th>
                             <th style={styles.th}>Uploaded Time</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredData.map((item, index) => (
-                            <tr key={index}>
-                                <td style={styles.td}>{item.personName}</td>
-                                <td style={styles.td}>{item.ic}</td>
-                                <td style={styles.td}>{item.locationName}</td>
-                                <td style={styles.td}>{item.address}</td>
-                                <td style={styles.td}>{item.coordinates}</td>
-                                <td style={styles.td}>{item.uploadedTime}</td>
+                        {filteredData.length > 0 ? (
+                            filteredData.map((item, index) => {
+                                const addressInfo = addresses[item.ic] || {};
+                                return (
+                                    <tr key={index}>
+                                        <td style={styles.td}>{item.personName}</td>
+                                        <td style={styles.td}>{item.ic}</td>
+                                        <td style={styles.td}>{addressInfo.name || 'Fetching name...'}</td>
+                                        <td style={styles.td}>{addressInfo.display_name || 'Fetching address...'}</td>
+                                        <td style={styles.td}>{`${item.latitude}, ${item.longitude}`}</td>
+                                        <td style={styles.td}>{item.uploadedTime}</td>
+                                    </tr>
+                                );
+                            })
+                        ) : (
+                            <tr>
+                                <td style={styles.noDataTd} colSpan="6">
+                                    No matching results found
+                                </td>
                             </tr>
-                        ))}
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -154,13 +162,12 @@ const styles = {
         alignItems: "flex-start",
         transition: "width 0.3s ease",
     },
-   
     searchFilterContainer: {
         width: "100%",
         display: "flex",
-        justifyContent: "space-between", 
-        alignItems: "center", 
-        marginBottom: "20px", 
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "20px",
     },
     searchContainer: {
         display: "flex",
@@ -178,20 +185,16 @@ const styles = {
         flex: 1,
         padding: "5px",
     },
-    searchIcon: {
-        marginLeft: "5px",
-        color: "#999",
-    },
     tableContainer: {
         width: "100%",
-        height: "400px",  
-        overflowY: "auto", 
+        height: "400px",
+        overflowY: "auto",
         marginTop: "20px",
         border: "1px solid #ddd",
-        boxSizing: "border-box", 
+        boxSizing: "border-box",
     },
     table: {
-        width: "100%",  
+        width: "100%",
         borderCollapse: "separate",
         borderSpacing: "0 5px",
         tableLayout: "fixed",
@@ -202,9 +205,8 @@ const styles = {
         textAlign: "left",
         backgroundColor: "#001f3f",
         color: "#fff",
-        lineHeight: "1",
         width: "16.6%",
-        position: "sticky", 
+        position: "sticky",
         top: "0",
         zIndex: "1",
     },
@@ -212,8 +214,12 @@ const styles = {
         border: "1px solid #ddd",
         padding: "8px",
         textAlign: "left",
-        lineHeight: "1",
         backgroundColor: "transparent",
+    },
+    noDataTd: {
+        textAlign: "center",
+        padding: "20px",
+        fontSize: "16px",
     },
 };
 
