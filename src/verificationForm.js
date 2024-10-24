@@ -4,30 +4,111 @@ import { useNavigate } from "react-router-dom";
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false); // Loading state
     const navigate = useNavigate();
 
     const handleCameraNavigation = () => {
-        // Only the Upload Image button navigates to the camera page
         navigate("/camera");
+    };
+
+    const updateUserStatus = async (ic, status) => {
+        try {
+            const response = await fetch(`http://localhost:3001/api/user/update-status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ic, status }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to update user status");
+            }
+        } catch (error) {
+            console.error("Error updating status:", error);
+        }
+    };
+
+    const incrementSubmitAttend = async (ic) => {
+        try {
+            const response = await fetch(`http://localhost:3001/api/user/increment-submit-attend`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ic }),
+            });
+
+            const result = await response.json(); // Parse JSON response
+            if (!response.ok) {
+                throw new Error(result.message || "Failed to update submitAttend");
+            }
+
+            console.log("SubmitAttend updated:", result.message); // Log success message
+        } catch (error) {
+            console.error("Error updating submitAttend:", error);
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-    
+        setError("");  // Reset any previous error messages
+        setLoading(true); // Set loading to true
+
         try {
-            const response = await fetch(`/api/user/verifyIC?ic=${ic}`);
+            // Fetch user data from the API
+            const response = await fetch('http://localhost:3001/api/user/user-data');
             const data = await response.json();
-    
-            if (data.exists) {
-                alert("Submitted successfully!");
-                setError("");
-                navigate("/dashboard");
+
+            // Find the user with the matching IC
+            const user = data.find(user => user.ic === parseInt(ic));
+
+            if (user) {
+                // Check if the user has reached the maximum submit attempts
+                if (user.submitAttend >= 3) {
+                    setError("You have reached the maximum submission attempts.");
+                    setLoading(false);
+                    return; // Block further submission
+                }
+
+                // Get the user's current location
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(async (position) => {
+                        const userLatitude = position.coords.latitude;
+                        const userLongitude = position.coords.longitude;
+
+                        // Compare the user's current location with the stored location
+                        let status;
+                        if (user.latitude === userLatitude && user.longitude === userLongitude) {
+                            status = "green"; // Match found
+                            alert(`IC verified successfully for user: ${user.username}`);
+                        } else {
+                            status = "yellow"; // No match
+                            alert(`Location does not match for user: ${user.username}. Status set to yellow.`);
+                        }
+
+                        // Update the user's status in the database
+                        await updateUserStatus(user.ic, status);
+                        // Increment submitAttend
+                        await incrementSubmitAttend(user.ic);
+                        setLoading(false); // Reset loading
+                    }, (error) => {
+                        console.error("Error getting location:", error);
+                        setError("Unable to retrieve your location.");
+                        setLoading(false); // Reset loading
+                    });
+                } else {
+                    setError("Geolocation is not supported by this browser.");
+                    setLoading(false); // Reset loading
+                }
             } else {
-                setError("Please fill in a valid IC.");
+                setError("IC not found. Please check your input.");
+                setLoading(false); // Reset loading
             }
         } catch (error) {
-            console.error("Error verifying IC:", error);
-            setError("Something went wrong, please try again.");
+            console.error("Error fetching user data:", error);
+            setError("An error occurred while verifying. Please try again.");
+            setLoading(false); // Reset loading
         }
     };
 
@@ -53,7 +134,9 @@ const VerifyForm = () => {
                         </button>
                     </div>
                     {error && <p style={styles.error}>{error}</p>}
-                    <button type="submit" style={styles.submitButton}>Submit</button>
+                    <button type="submit" style={styles.submitButton} disabled={loading}>
+                        {loading ? "Submitting..." : "Submit"}
+                    </button>
                 </form>
             </div>
         </div>
@@ -83,11 +166,11 @@ const styles = {
         textAlign: "left",
     },
     title: {
-        color: "white",  // Change title to white
+        color: "white",
         marginBottom: "10px",
     },
     subtitle: {
-        color: "white",  // Change subtitle to white
+        color: "white",
         marginBottom: "20px",
     },
     inputGroup: {
@@ -108,16 +191,15 @@ const styles = {
         boxSizing: "border-box",
     },
     button: {
-        width: "40%", 
+        width: "40%",
         padding: "10px",
         backgroundColor: "#3e3e4f",
         color: "white",
-        border: "2px solid white",  
+        border: "2px solid white",
         borderRadius: "5px",
         cursor: "pointer",
-        marginLeft: "1%",  
+        marginLeft: "1%",
     },
-    
     submitButton: {
         width: "70%",
         padding: "10px",
@@ -133,7 +215,7 @@ const styles = {
     error: {
         color: "red",
         marginBottom: "10px",
-    },
+    }
 };
 
 export default VerifyForm;
