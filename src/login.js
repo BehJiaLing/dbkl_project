@@ -34,8 +34,9 @@ const LoginForm = () => {
             );
 
             if (foundUser) {
-                const token = "your_generated_token";
+                const token = "huehdw768hduye@hue7";
                 localStorage.setItem("authToken", token);
+                localStorage.setItem("adminId", foundUser.id); 
                 alert("Login successful!");
                 setError("");
                 setIsLoading(false);

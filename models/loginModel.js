@@ -14,7 +14,7 @@ const db = require('../config/db');
 
 const LoginModel = {
     getAuthData: async () => {
-        const [rows] = await db.query('SELECT username, password FROM admin');
+        const [rows] = await db.query('SELECT id, username, password FROM admin');
         return rows;
     }
 };
