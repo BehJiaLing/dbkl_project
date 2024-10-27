@@ -1,64 +1,26 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useState } from "react";
+import Webcam from "react-webcam";
 import { useNavigate } from "react-router-dom";
 
 const CameraPage = () => {
-    const videoRef = useRef(null);
     const navigate = useNavigate();
-    const streamRef = useRef(null);
     const [imageData, setImageData] = useState(null);
     const [isImageCaptured, setIsImageCaptured] = useState(false);
 
-    useEffect(() => {
-        startCamera();
-
-        // Cleanup function to stop the camera stream when the component unmounts
-        return () => {
-            stopCamera();
-        };
-    }, []);
-
-    const startCamera = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" }, // Use rear camera
-            });
-            videoRef.current.srcObject = stream;
-            streamRef.current = stream; // Store the stream reference
-        } catch (err) {
-            console.error("Error accessing camera: ", err);
-        }
-    };
-
-    const stopCamera = () => {
-        if (streamRef.current) {
-            const tracks = streamRef.current.getTracks();
-            tracks.forEach((track) => track.stop()); // Stop each track
-            streamRef.current = null; // Clear the reference
-        }
-    };
+    const webcamRef = React.useRef(null);
 
     const handleCapture = () => {
-        const video = videoRef.current;
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const capturedImageData = canvas.toDataURL("image/png");
-
+        const capturedImageData = webcamRef.current.getScreenshot();
         setImageData(capturedImageData); // Store the captured image data
         setIsImageCaptured(true); // Mark that the image is captured
-        stopCamera(); // Stop the camera after capturing the image
     };
 
     const handleRetake = () => {
         setImageData(null); // Clear the captured image
         setIsImageCaptured(false); // Allow new capture
-        startCamera(); // Restart the camera
     };
 
     const handleCancel = () => {
-        stopCamera(); // Stop the camera before navigating
         navigate("/verificationForm"); // Navigate back to verification form
     };
 
@@ -69,7 +31,7 @@ const CameraPage = () => {
     };
 
     return (
-        <div style={styles.pageWrapper}>    
+        <div style={styles.pageWrapper}>
             <div style={styles.container}>
                 {isImageCaptured ? (
                     <>
@@ -82,7 +44,15 @@ const CameraPage = () => {
                     </>
                 ) : (
                     <>
-                        <video ref={videoRef} autoPlay style={styles.video} />
+                        <Webcam
+                            audio={false}
+                            ref={webcamRef}
+                            screenshotFormat="image/png"
+                            style={styles.video}
+                            videoConstraints={{
+                                facingMode: "environment" // Use rear camera
+                            }}
+                        />
                         <button style={styles.button} onClick={handleCapture}>Confirm Upload</button>
                         <div style={styles.buttonContainer}>
                             <button style={styles.linkButton} onClick={handleCancel}>Cancel</button>
