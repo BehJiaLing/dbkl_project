@@ -49,45 +49,51 @@ const VerifyForm = () => {
         }
     };
 
+    const isWithinDistance = (lat1, lon1, lat2, lon2, tolerance) => {
+        const earthRadius = 6371; // Radius of Earth in kilometers
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a = Math.sin(dLat / 2) ** 2 +
+                  Math.cos(lat1 * (Math.PI / 180)) *
+                  Math.cos(lat2 * (Math.PI / 180)) *
+                  Math.sin(dLon / 2) ** 2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = earthRadius * c; // Distance in km
+        return distance <= tolerance;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true); // Set loading to true
 
         try {
-            // Fetch user data from the API
             const response = await fetch('http://localhost:3001/api/user/user-data');
             const data = await response.json();
 
-            // Find the user with the matching IC
             const user = data.find(user => user.ic === parseInt(ic));
 
             if (user) {
-                // Check if the user has reached the maximum submit attempts
                 if (user.submitAttend >= 3) {
                     alert("Unsuccessful: You have reached the maximum submission attempts."); // Alert for max attempts
                     setLoading(false);
                     return; // Block further submission
                 }
 
-                // Get the user's current location
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(async (position) => {
                         const userLatitude = position.coords.latitude;
                         const userLongitude = position.coords.longitude;
 
-                        // Compare the user's current location with the stored location
                         let status;
-                        if (user.latitude === userLatitude && user.longitude === userLongitude) {
-                            status = "green"; // Match found
+                        if (isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)) {
+                            status = "green";
                             alert("Submitted Successfully: Location matched."); // Alert for successful submission and match
                         } else {
-                            status = "yellow"; // No match
+                            status = "yellow";
                             alert("Submitted Successfully: Location does not match."); // Alert for successful submission but no match
                         }
 
-                        // Update the user's status in the database
                         await updateUserStatus(user.ic, status);
-                        // Increment submitAttend
                         await incrementSubmitAttend(user.ic);
                         setLoading(false); // Reset loading
                     }, (error) => {
