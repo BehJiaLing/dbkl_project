@@ -21,11 +21,11 @@ const VerifyForm = () => {
             });
 
             if (!response.ok) {
-                alert("Failed to update user status"); // Alert instead of throw error
+                alert("Unsuccessful: Please try again."); // Alert for unsuccessful status update
             }
         } catch (error) {
             console.error("Error updating status:", error);
-            alert("Error updating status"); // Alert instead of throw error
+            alert("Unsuccessful: Please try again."); // Alert for error updating status
         }
     };
 
@@ -41,13 +41,11 @@ const VerifyForm = () => {
 
             const result = await response.json(); // Parse JSON response
             if (!response.ok) {
-                alert(result.message || "Failed to update submitAttend"); // Alert instead of throw error
-            } else {
-                alert("SubmitAttend updated: " + result.message); // Alert success message
+                alert("Unsuccessful: Please try again."); // Alert for unsuccessful increment
             }
         } catch (error) {
             console.error("Error updating submitAttend:", error);
-            alert("Error updating submitAttend"); // Alert instead of throw error
+            alert("Unsuccessful: Please try again."); // Alert for error updating increment
         }
     };
 
@@ -66,7 +64,7 @@ const VerifyForm = () => {
             if (user) {
                 // Check if the user has reached the maximum submit attempts
                 if (user.submitAttend >= 3) {
-                    alert("You have reached the maximum submission attempts."); // Alert instead of error state
+                    alert("Unsuccessful: You have reached the maximum submission attempts."); // Alert for max attempts
                     setLoading(false);
                     return; // Block further submission
                 }
@@ -81,10 +79,10 @@ const VerifyForm = () => {
                         let status;
                         if (user.latitude === userLatitude && user.longitude === userLongitude) {
                             status = "green"; // Match found
-                            alert(`IC verified successfully for user: ${user.username}`);
+                            alert("Submitted Successfully: Location matched."); // Alert for successful submission and match
                         } else {
                             status = "yellow"; // No match
-                            alert(`Location does not match for user: ${user.username}. Status set to yellow.`);
+                            alert("Submitted Successfully: Location does not match."); // Alert for successful submission but no match
                         }
 
                         // Update the user's status in the database
@@ -94,20 +92,20 @@ const VerifyForm = () => {
                         setLoading(false); // Reset loading
                     }, (error) => {
                         console.error("Error getting location:", error);
-                        alert("Unable to retrieve your location."); // Alert instead of error state
+                        alert("Unsuccessful: Please try again."); // Alert for location retrieval error
                         setLoading(false); // Reset loading
                     });
                 } else {
-                    alert("Geolocation is not supported by this browser."); // Alert instead of error state
+                    alert("Unsuccessful: Geolocation is not supported by this browser."); // Alert if geolocation is not supported
                     setLoading(false); // Reset loading
                 }
             } else {
-                alert("IC not found. Please check your input."); // Alert instead of error state
+                alert("Invalid IC Number: Please enter a valid IC number."); // Alert for invalid IC
                 setLoading(false); // Reset loading
             }
         } catch (error) {
             console.error("Error fetching user data:", error);
-            alert("An error occurred while verifying. Please try again."); // Alert instead of error state
+            alert("Unsuccessful: Please try again."); // Alert for fetching error
             setLoading(false); // Reset loading
         }
     };
