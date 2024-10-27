@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false); // Loading state
     const navigate = useNavigate();
 
@@ -22,10 +21,11 @@ const VerifyForm = () => {
             });
 
             if (!response.ok) {
-                throw new Error("Failed to update user status");
+                alert("Failed to update user status"); // Alert instead of throw error
             }
         } catch (error) {
             console.error("Error updating status:", error);
+            alert("Error updating status"); // Alert instead of throw error
         }
     };
 
@@ -41,18 +41,18 @@ const VerifyForm = () => {
 
             const result = await response.json(); // Parse JSON response
             if (!response.ok) {
-                throw new Error(result.message || "Failed to update submitAttend");
+                alert(result.message || "Failed to update submitAttend"); // Alert instead of throw error
+            } else {
+                alert("SubmitAttend updated: " + result.message); // Alert success message
             }
-
-            console.log("SubmitAttend updated:", result.message); // Log success message
         } catch (error) {
             console.error("Error updating submitAttend:", error);
+            alert("Error updating submitAttend"); // Alert instead of throw error
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError("");  // Reset any previous error messages
         setLoading(true); // Set loading to true
 
         try {
@@ -66,7 +66,7 @@ const VerifyForm = () => {
             if (user) {
                 // Check if the user has reached the maximum submit attempts
                 if (user.submitAttend >= 3) {
-                    setError("You have reached the maximum submission attempts.");
+                    alert("You have reached the maximum submission attempts."); // Alert instead of error state
                     setLoading(false);
                     return; // Block further submission
                 }
@@ -94,20 +94,20 @@ const VerifyForm = () => {
                         setLoading(false); // Reset loading
                     }, (error) => {
                         console.error("Error getting location:", error);
-                        setError("Unable to retrieve your location.");
+                        alert("Unable to retrieve your location."); // Alert instead of error state
                         setLoading(false); // Reset loading
                     });
                 } else {
-                    setError("Geolocation is not supported by this browser.");
+                    alert("Geolocation is not supported by this browser."); // Alert instead of error state
                     setLoading(false); // Reset loading
                 }
             } else {
-                setError("IC not found. Please check your input.");
+                alert("IC not found. Please check your input."); // Alert instead of error state
                 setLoading(false); // Reset loading
             }
         } catch (error) {
             console.error("Error fetching user data:", error);
-            setError("An error occurred while verifying. Please try again.");
+            alert("An error occurred while verifying. Please try again."); // Alert instead of error state
             setLoading(false); // Reset loading
         }
     };
@@ -133,7 +133,6 @@ const VerifyForm = () => {
                             Upload Image
                         </button>
                     </div>
-                    {error && <p style={styles.error}>{error}</p>}
                     <button type="submit" style={styles.submitButton} disabled={loading}>
                         {loading ? "Submitting..." : "Submit"}
                     </button>
@@ -212,10 +211,6 @@ const styles = {
         margin: "0 auto",
         display: "block",
     },
-    error: {
-        color: "red",
-        marginBottom: "10px",
-    }
 };
 
 export default VerifyForm;
