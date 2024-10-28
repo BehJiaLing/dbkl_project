@@ -72,11 +72,18 @@ const VerifyForm = () => {
         return distance <= tolerance;
     };
 
+    const compareImages = async (uploadedImageBlob, originalImageBlob) => {
+        // Placeholder for face recognition logic
+        // You would implement your face recognition library's comparison logic here
+        // Return true if the images match, otherwise false
+        return true; // This is a placeholder; replace with actual face recognition logic
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!isImageUploaded) {
-            alert("Please upload your image.");
+            alert("Please upload your image."); // Alert for image upload
             return;
         }
 
@@ -99,22 +106,34 @@ const VerifyForm = () => {
                         const userLatitude = position.coords.latitude;
                         const userLongitude = position.coords.longitude;
 
-                        let status;
+                        let locationStatus;
                         if (isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)) {
-                            status = "green";
-                            alert("Submitted Successfully: Location matched.");
+                            locationStatus = "matched";
                         } else {
-                            status = "yellow";
-                            alert("Submitted Successfully: Location does not match.");
+                            locationStatus = "does not match";
                         }
 
-                        await updateUserStatus(user.ic, status);
-                        await incrementSubmitAttend(user.ic);
+                        // Placeholder for original image from database
+                        const originalImageBlob = user.imageOri; // Replace with the actual image blob from your database
+                        const uploadedImageBlob = localStorage.getItem("tempImageData"); // Get the uploaded image blob
+
+                        const isImageMatched = await compareImages(uploadedImageBlob, originalImageBlob);
+
+                        if (locationStatus === "matched" && isImageMatched) {
+                            await updateUserStatus(user.ic, "green");
+                            await incrementSubmitAttend(user.ic);
+                            alert("Submitted Successfully: Location and image matched.");
+                        } else if (locationStatus === "matched") {
+                            await updateUserStatus(user.ic, "yellow");
+                            await incrementSubmitAttend(user.ic);
+                            alert("Submitted Successfully: Image does not match.");
+                        } else {
+                            alert("Submitted Successfully: Location does not match.");
+                        }
 
                         setIc("");
                         localStorage.removeItem("tempImageData");
                         setIsImageUploaded(false); // Reset image upload status after submission
-
                         setLoading(false);
                     }, (error) => {
                         console.error("Error getting location:", error);
@@ -170,15 +189,15 @@ const VerifyForm = () => {
 // Inline styles
 const styles = {
     pageWrapper: {
-        height: "100vh",  
+        height: "100vh",
         display: "flex",
         justifyContent: "flex-end",
         paddingRight: "250px",
         alignItems: "center",
-        backgroundImage: "url('/assets/login/background.png')",  
+        backgroundImage: "url('/assets/login/background.png')",
         backgroundColor: "#2d2d3a",
-        backgroundSize: "cover", 
-        backgroundPosition: "center",  
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
     },
     container: {
