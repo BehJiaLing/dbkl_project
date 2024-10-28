@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
-    const [loading, setLoading] = useState(false); // Loading state
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleCameraNavigation = () => {
@@ -21,11 +21,12 @@ const VerifyForm = () => {
             });
 
             if (!response.ok) {
-                alert("Unsuccessful: Please try again."); // Alert for unsuccessful status update
+                const errorData = await response.json();
+                alert(errorData.message || "Unsuccessful: Please try again.");
             }
         } catch (error) {
             console.error("Error updating status:", error);
-            alert("Unsuccessful: Please try again."); // Alert for error updating status
+            alert("Unsuccessful: Please try again.");
         }
     };
 
@@ -39,18 +40,20 @@ const VerifyForm = () => {
                 body: JSON.stringify({ ic }),
             });
 
-            const result = await response.json(); // Parse JSON response
+            const result = await response.json();
             if (!response.ok) {
-                alert("Unsuccessful: Please try again."); // Alert for unsuccessful increment
+                alert(result.message || "Unsuccessful: Please try again.");
+            } else if (result.message === 'Maximum submit attempts reached') {
+                alert("Unsuccessful: You have reached the maximum submission attempts.");
             }
         } catch (error) {
             console.error("Error updating submitAttend:", error);
-            alert("Unsuccessful: Please try again."); // Alert for error updating increment
+            alert("Unsuccessful: Please try again.");
         }
     };
 
     const isWithinDistance = (lat1, lon1, lat2, lon2, tolerance) => {
-        const earthRadius = 6371; // Radius of Earth in kilometers
+        const earthRadius = 6371;
         const dLat = (lat2 - lat1) * (Math.PI / 180);
         const dLon = (lon2 - lon1) * (Math.PI / 180);
         const a = Math.sin(dLat / 2) ** 2 +
@@ -58,25 +61,24 @@ const VerifyForm = () => {
                   Math.cos(lat2 * (Math.PI / 180)) *
                   Math.sin(dLon / 2) ** 2;
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = earthRadius * c; // Distance in km
+        const distance = earthRadius * c;
         return distance <= tolerance;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true); // Set loading to true
+        setLoading(true);
 
         try {
             const response = await fetch('http://localhost:3001/api/user/user-data');
             const data = await response.json();
 
             const user = data.find(user => user.ic === parseInt(ic));
-
             if (user) {
                 if (user.submitAttend >= 3) {
-                    alert("Unsuccessful: You have reached the maximum submission attempts."); // Alert for max attempts
+                    alert("Unsuccessful: You have reached the maximum submission attempts.");
                     setLoading(false);
-                    return; // Block further submission
+                    return;
                 }
 
                 if (navigator.geolocation) {
@@ -87,32 +89,37 @@ const VerifyForm = () => {
                         let status;
                         if (isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)) {
                             status = "green";
-                            alert("Submitted Successfully: Location matched."); // Alert for successful submission and match
+                            alert("Submitted Successfully: Location matched.");
                         } else {
                             status = "yellow";
-                            alert("Submitted Successfully: Location does not match."); // Alert for successful submission but no match
+                            alert("Submitted Successfully: Location does not match.");
                         }
 
                         await updateUserStatus(user.ic, status);
                         await incrementSubmitAttend(user.ic);
-                        setLoading(false); // Reset loading
+
+                        // Clear IC entry and tempImageData after successful submission
+                        setIc("");
+                        localStorage.removeItem("tempImageData");
+
+                        setLoading(false);
                     }, (error) => {
                         console.error("Error getting location:", error);
-                        alert("Unsuccessful: Please try again."); // Alert for location retrieval error
-                        setLoading(false); // Reset loading
+                        alert("Unsuccessful: Please try again.");
+                        setLoading(false);
                     });
                 } else {
-                    alert("Unsuccessful: Geolocation is not supported by this browser."); // Alert if geolocation is not supported
-                    setLoading(false); // Reset loading
+                    alert("Unsuccessful: Geolocation is not supported by this browser.");
+                    setLoading(false);
                 }
             } else {
-                alert("Invalid IC Number: Please enter a valid IC number."); // Alert for invalid IC
-                setLoading(false); // Reset loading
+                alert("Invalid IC Number: Please enter a valid IC number.");
+                setLoading(false);
             }
         } catch (error) {
             console.error("Error fetching user data:", error);
-            alert("Unsuccessful: Please try again."); // Alert for fetching error
-            setLoading(false); // Reset loading
+            alert("Unsuccessful: Please try again.");
+            setLoading(false);
         }
     };
 

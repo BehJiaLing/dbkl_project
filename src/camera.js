@@ -26,8 +26,9 @@ const CameraPage = () => {
 
     const handleConfirmUpload = () => {
         alert("Image has been successfully uploaded!"); // Show message box on confirm
+        localStorage.setItem("tempImageData", imageData); // Save captured image to localStorage
         console.log("Captured Image Data: ", imageData);
-        navigate("/verificationForm"); // Navigate after successful capture
+        navigate("/verificationForm"); // Navigate back to verification form
     };
 
     return (
@@ -36,7 +37,7 @@ const CameraPage = () => {
                 {isImageCaptured ? (
                     <>
                         <img src={imageData} alt="Captured" style={styles.capturedImage} />
-                        <button style={styles.button} onClick={handleConfirmUpload}>Confirmed</button>
+                        <button style={styles.button} onClick={handleConfirmUpload}>Confirm</button>
                         <div style={styles.buttonContainer}>
                             <button style={styles.linkButton} onClick={handleCancel}>Cancel</button>
                             <button style={styles.linkButton} onClick={handleRetake}>Retake</button>
@@ -53,7 +54,7 @@ const CameraPage = () => {
                                 facingMode: "environment" // Use rear camera
                             }}
                         />
-                        <button style={styles.button} onClick={handleCapture}>Confirm Upload</button>
+                        <button style={styles.button} onClick={handleCapture}>Capture</button>
                         <div style={styles.buttonContainer}>
                             <button style={styles.linkButton} onClick={handleCancel}>Cancel</button>
                         </div>
