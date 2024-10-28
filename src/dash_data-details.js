@@ -14,31 +14,30 @@ const DataDetailsContent = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/api/user/user-data'); // Fetch data from backend
+                const response = await axios.get('http://localhost:3001/api/user/user-data');
                 const mappedData = response.data.map(item => ({
                     personName: item.username,
                     ic: item.ic,
                     latitude: item.latitude,
                     longitude: item.longitude,
-                    pointType: item.status, // Mapping 'status' to 'pointType'
-                    uploadedTime: new Date().toLocaleString(), // Example timestamp
+                    pointType: item.status,
+                    uploadedTime: new Date().toLocaleString(),
                 }));
                 setData(mappedData);
 
                 // Fetch addresses after getting the data
                 const addressPromises = mappedData.map(async (item) => {
                     const address = await getAddressFromCoordinates(item.latitude, item.longitude);
-                    return { ic: item.ic, address }; // Map the address to the user's IC
+                    return { ic: item.ic, address };
                 });
 
-                const addressesArray = await Promise.all(addressPromises); // Wait for all addresses to be fetched
+                const addressesArray = await Promise.all(addressPromises);
                 const addressesMap = addressesArray.reduce((acc, curr) => {
                     acc[curr.ic] = curr.address;
                     return acc;
                 }, {});
 
-                setAddresses(addressesMap); // Set the fetched addresses in the state
-
+                setAddresses(addressesMap);
                 setLoading(false);
             } catch (err) {
                 setError(err.message);
@@ -54,8 +53,8 @@ const DataDetailsContent = () => {
         try {
             const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
             return {
-                name: response.data.name || 'Name not found', // Location name
-                display_name: response.data.display_name || 'Address not found' // Full address
+                name: response.data.name || 'Name not found',
+                display_name: response.data.display_name || 'Address not found'
             };
         } catch (error) {
             console.error('Error fetching address:', error);
@@ -92,9 +91,8 @@ const DataDetailsContent = () => {
 
     return (
         <div style={styles.container}>
-            {/* Flex container for search bar and filter */}
             <div style={styles.searchFilterContainer}>
-                {/* Search input */}
+                {/* Search input on the left */}
                 <div style={styles.searchContainer}>
                     <input
                         type="text"
@@ -105,8 +103,10 @@ const DataDetailsContent = () => {
                     />
                 </div>
 
-                {/* Point Filter Component aligned to the right */}
-                <PointFilter filter={filter} onChange={handleFilterChange} />
+                {/* Filter component on the right */}
+                <div style={styles.filterContainer}>
+                    <PointFilter filter={filter} onChange={handleFilterChange} />
+                </div>
             </div>
 
             {/* Table */}
@@ -159,15 +159,17 @@ const styles = {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        alignItems: "flex-start",
+        alignItems: "center",
         transition: "width 0.3s ease",
     },
     searchFilterContainer: {
-        width: "100%",
+        width: "90%",
+        maxWidth: "1200px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: "20px",
+        marginBottom: "10px", // Reduced the space between the search/filter and the table
+        boxSizing: "border-box",
     },
     searchContainer: {
         display: "flex",
@@ -185,13 +187,22 @@ const styles = {
         flex: 1,
         padding: "5px",
     },
+    filterContainer: {
+        display: "flex",
+        alignItems: "center",
+        marginLeft: "20px",
+    },
     tableContainer: {
-        width: "100%",
+        width: "90%",
+        maxWidth: "1200px",
         height: "400px",
         overflowY: "auto",
-        marginTop: "20px",
+        marginTop: "10px", // Reduced the space between the search/filter and the table
         border: "1px solid #ddd",
         boxSizing: "border-box",
+        backgroundColor: "#fff",
+        borderRadius: "5px",
+        boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
     },
     table: {
         width: "100%",
