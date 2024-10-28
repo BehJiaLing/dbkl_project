@@ -1,21 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_TOKEN = "1a00ca71f0414c83a2fa11401c8abd36";
+
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const [isImageUploaded, setIsImageUploaded] = useState(false); // New state for image upload check
+    const [isImageUploaded, setIsImageUploaded] = useState(false);
+
+    useEffect(() => {
+        const tempImageData = localStorage.getItem("tempImageData");
+        setIsImageUploaded(!!tempImageData);
+    }, []);
 
     const handleCameraNavigation = () => {
         navigate("/camera");
     };
 
-    useEffect(() => {
-        // Check if an image is saved in localStorage to simulate image upload status
-        const tempImageData = localStorage.getItem("tempImageData");
-        setIsImageUploaded(!!tempImageData); // Update upload status based on presence of tempImageData
-    }, []);
+    const base64ToBlob = (base64, mimeType) => {
+        if (typeof base64 !== "string") {
+            console.error("Invalid base64 data:", base64);
+            return null;
+        }
+        const parts = base64.split(",");
+        if (parts.length !== 2) {
+            console.error("Invalid base64 format:", base64);
+            return null;
+        }
+        const byteCharacters = atob(parts[1]);
+        const byteNumbers = Array.from(byteCharacters, char => char.charCodeAt(0));
+        return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+    };
 
     const updateUserStatus = async (ic, status) => {
         try {
@@ -29,11 +45,11 @@ const VerifyForm = () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                alert(errorData.message || "Unsuccessful: Please try again.");
+                alert(errorData.message || "Failed to update status. Please try again.");
             }
         } catch (error) {
             console.error("Error updating status:", error);
-            alert("Unsuccessful: Please try again.");
+            alert("Failed to update status. Please try again.");
         }
     };
 
@@ -49,18 +65,18 @@ const VerifyForm = () => {
 
             const result = await response.json();
             if (!response.ok) {
-                alert(result.message || "Unsuccessful: Please try again.");
+                alert(result.message || "Failed to increment submission. Please try again.");
             } else if (result.message === 'Maximum submit attempts reached') {
-                alert("Unsuccessful: You have reached the maximum submission attempts.");
+                alert("You have reached the maximum submission attempts.");
             }
         } catch (error) {
             console.error("Error updating submitAttend:", error);
-            alert("Unsuccessful: Please try again.");
+            alert("Failed to increment submission. Please try again.");
         }
     };
 
     const isWithinDistance = (lat1, lon1, lat2, lon2, tolerance) => {
-        const earthRadius = 6371;
+        const earthRadius = 6371; // Radius of the earth in km
         const dLat = (lat2 - lat1) * (Math.PI / 180);
         const dLon = (lon2 - lon1) * (Math.PI / 180);
         const a = Math.sin(dLat / 2) ** 2 +
@@ -68,22 +84,54 @@ const VerifyForm = () => {
                   Math.cos(lat2 * (Math.PI / 180)) *
                   Math.sin(dLon / 2) ** 2;
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = earthRadius * c;
-        return distance <= tolerance;
+        return (earthRadius * c) <= tolerance; // Returns true if within tolerance
     };
 
-    const compareImages = async (uploadedImageBlob, originalImageBlob) => {
-        // Placeholder for face recognition logic
-        // You would implement your face recognition library's comparison logic here
-        // Return true if the images match, otherwise false
-        return true; // This is a placeholder; replace with actual face recognition logic
+    const verifyFace = async (image, person_uuid) => {
+        const myHeaders = new Headers();
+        myHeaders.append("token", API_TOKEN);
+
+        const formData = new FormData();
+        formData.append("photo", image);
+
+        try {
+            const response = await fetch(`https://api.luxand.cloud/photo/verify/${person_uuid}`, {
+                method: 'POST',
+                headers: myHeaders,
+                body: formData,
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Error in verifyFace:', error);
+            throw new Error('Face verification failed');
+        }
     };
+
+    const compareImages = async (uploadedImageData, originalImageData) => {
+        const uploadedImageBlob = base64ToBlob(uploadedImageData, "image/jpeg");
+        const originalImageBlob = base64ToBlob(originalImageData, "image/jpeg");
+    
+        if (!uploadedImageBlob || !originalImageBlob) {
+            console.error("Invalid image data for comparison.");
+            return false;
+        }
+    
+        try {
+            const result = await verifyFace(uploadedImageBlob, originalImageData);
+            console.log("Verification Result:", result); // Log the result for debugging
+            return result.status === "success";
+        } catch (error) {
+            console.error("Error during face verification:", error);
+            return false;
+        }
+    };
+    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!isImageUploaded) {
-            alert("Please upload your image."); // Alert for image upload
+            alert("Please upload your image.");
             return;
         }
 
@@ -92,65 +140,57 @@ const VerifyForm = () => {
         try {
             const response = await fetch('http://localhost:3001/api/user/user-data');
             const data = await response.json();
+            const user = data.find(user => user.ic === parseInt(ic, 10)); // Use base 10 for parsing
 
-            const user = data.find(user => user.ic === parseInt(ic));
             if (user) {
                 if (user.submitAttend >= 3) {
-                    alert("Unsuccessful: You have reached the maximum submission attempts.");
+                    alert("You have reached the maximum submission attempts.");
                     setLoading(false);
                     return;
                 }
 
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(async (position) => {
-                        const userLatitude = position.coords.latitude;
-                        const userLongitude = position.coords.longitude;
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const userLatitude = position.coords.latitude;
+                    const userLongitude = position.coords.longitude;
 
-                        let locationStatus;
-                        if (isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)) {
-                            locationStatus = "matched";
-                        } else {
-                            locationStatus = "does not match";
-                        }
+                    const locationStatus = isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)
+                        ? "matched"
+                        : "does not match";
 
-                        // Placeholder for original image from database
-                        const originalImageBlob = user.imageOri; // Replace with the actual image blob from your database
-                        const uploadedImageBlob = localStorage.getItem("tempImageData"); // Get the uploaded image blob
+                    const uploadedImageData = localStorage.getItem("tempImageData"); 
+                    const originalImageData = user.imageOri; 
 
-                        const isImageMatched = await compareImages(uploadedImageBlob, originalImageBlob);
+                    const isImageMatched = await compareImages(uploadedImageData, originalImageData);
 
-                        if (locationStatus === "matched" && isImageMatched) {
-                            await updateUserStatus(user.ic, "green");
-                            await incrementSubmitAttend(user.ic);
-                            alert("Submitted Successfully: Location and image matched.");
-                        } else if (locationStatus === "matched") {
-                            await updateUserStatus(user.ic, "yellow");
-                            await incrementSubmitAttend(user.ic);
-                            alert("Submitted Successfully: Image does not match.");
-                        } else {
-                            alert("Submitted Successfully: Location does not match.");
-                        }
+                    if (locationStatus === "matched" && isImageMatched) {
+                        await updateUserStatus(user.ic, "green");
+                        await incrementSubmitAttend(user.ic);
+                        alert("Submitted Successfully: Location and image matched.");
+                    } else if (locationStatus === "matched") {
+                        await updateUserStatus(user.ic, "yellow");
+                        await incrementSubmitAttend(user.ic);
+                        alert("Submitted Successfully: Image does not match.");
+                    } else {
+                        alert("Submitted Successfully: Location does not match.");
+                    }
 
-                        setIc("");
-                        localStorage.removeItem("tempImageData");
-                        setIsImageUploaded(false); // Reset image upload status after submission
-                        setLoading(false);
-                    }, (error) => {
-                        console.error("Error getting location:", error);
-                        alert("Unsuccessful: Please try again.");
-                        setLoading(false);
-                    });
-                } else {
-                    alert("Unsuccessful: Geolocation is not supported by this browser.");
+                    // Reset form state
+                    setIc("");
+                    localStorage.removeItem("tempImageData");
+                    setIsImageUploaded(false);
                     setLoading(false);
-                }
+                }, (error) => {
+                    console.error("Error getting location:", error);
+                    alert("Failed to retrieve location. Please try again.");
+                    setLoading(false);
+                });
             } else {
                 alert("Invalid IC Number: Please enter a valid IC number.");
                 setLoading(false);
             }
         } catch (error) {
             console.error("Error fetching user data:", error);
-            alert("Unsuccessful: Please try again.");
+            alert("Failed to fetch user data. Please try again.");
             setLoading(false);
         }
     };
@@ -184,8 +224,6 @@ const VerifyForm = () => {
         </div>
     );
 };
-
-
 // Inline styles
 const styles = {
     pageWrapper: {
