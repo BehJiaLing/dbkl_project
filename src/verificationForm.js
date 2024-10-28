@@ -1,14 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const [isImageUploaded, setIsImageUploaded] = useState(false); // New state for image upload check
 
     const handleCameraNavigation = () => {
         navigate("/camera");
     };
+
+    useEffect(() => {
+        // Check if an image is saved in localStorage to simulate image upload status
+        const tempImageData = localStorage.getItem("tempImageData");
+        setIsImageUploaded(!!tempImageData); // Update upload status based on presence of tempImageData
+    }, []);
 
     const updateUserStatus = async (ic, status) => {
         try {
@@ -67,6 +74,12 @@ const VerifyForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!isImageUploaded) {
+            alert("Please upload your image.");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -98,9 +111,9 @@ const VerifyForm = () => {
                         await updateUserStatus(user.ic, status);
                         await incrementSubmitAttend(user.ic);
 
-                        // Clear IC entry and tempImageData after successful submission
                         setIc("");
                         localStorage.removeItem("tempImageData");
+                        setIsImageUploaded(false); // Reset image upload status after submission
 
                         setLoading(false);
                     }, (error) => {
@@ -152,6 +165,7 @@ const VerifyForm = () => {
         </div>
     );
 };
+
 
 // Inline styles
 const styles = {
