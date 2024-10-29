@@ -11,11 +11,17 @@ const VerifyForm = () => {
     const [isImageUploaded, setIsImageUploaded] = useState(false);
 
     useEffect(() => {
+        const storedIc = localStorage.getItem("icValue");
+        if (storedIc) {
+            setIc(storedIc);
+        }
+
         const tempImageData = localStorage.getItem("tempImageData");
         setIsImageUploaded(!!tempImageData);
     }, []);
 
     const handleCameraNavigation = () => {
+        localStorage.setItem("icValue", ic);
         navigate("/camera");
     };
 
@@ -92,108 +98,6 @@ const VerifyForm = () => {
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-    
-        if (!isImageUploaded) {
-            alert("Please upload your image.");
-            return;
-        }
-    
-        setLoading(true);
-    
-        try {
-            const response = await fetch('http://localhost:3001/api/user/user-data');
-            const data = await response.json();
-            const user = data.find(user => user.ic === parseInt(ic, 10));
-    
-            if (user) {
-                if (user.submitAttend >= 3) {
-                    alert("You have reached the maximum submission attempts.");
-                    setLoading(false);
-                    return;
-                }
-    
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    const userLatitude = position.coords.latitude;
-                    const userLongitude = position.coords.longitude;
-    
-                    const locationStatus = isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)
-                        ? "matched"
-                        : "does not match";
-    
-                    const uploadedImageData = localStorage.getItem("tempImageData");
-                    const originalImageData = user.imageOri;
-    
-                    if (!originalImageData) {
-                        alert("Original image data is missing.");
-                        setLoading(false);
-                        return;
-                    }
-    
-                    // Convert original image data (array of bytes) to Base64 using Uint8Array
-                    const byteCharacters = new Uint8Array(originalImageData.data);
-                    let binaryString = '';
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        binaryString += String.fromCharCode(byteCharacters[i]);
-                    }
-                    const originalImageBase64 = btoa(binaryString);
-                    const originalImageUrl = `data:image/jpeg;base64,${originalImageBase64}`;
-    
-                    // Upload the original image to Imgbb and get the URL
-                    const originalImageUploadUrl = await uploadImageToImgbb(originalImageUrl);
-                    const uploadedImageUrl = await uploadImageToImgbb(uploadedImageData);
-    
-                    // Log the original image URL
-                    console.log("Original Image URL: ", originalImageUploadUrl);
-                    console.log("Uploaded Image URL: ", uploadedImageUrl);
-    
-                    if (!uploadedImageUrl || !originalImageUploadUrl) {
-                        alert("Failed to upload the images. Please try again.");
-                        setLoading(false);
-                        return;
-                    }
-    
-                    const isImageMatched = await verifyFaceWithFacePlusPlus(uploadedImageUrl, originalImageUploadUrl);
-                    console.log("Face Verification Result:", isImageMatched);
-    
-                    if (locationStatus === "matched" && isImageMatched.confidence > 50) {
-                        await updateUserStatus(user.ic, "green");
-                        await incrementSubmitAttend(user.ic);
-                        alert("Submitted Successfully: Location and image matched.");
-                    } else if (locationStatus === "matched") {
-                        await updateUserStatus(user.ic, "yellow");
-                        await incrementSubmitAttend(user.ic);
-                        alert("Submitted Successfully: Image does not match.");
-                    } else {
-                        alert("Submitted Successfully: Location does not match.");
-                    }
-    
-                    // Reset form state
-                    setIc("");
-                    localStorage.removeItem("tempImageData");
-                    setIsImageUploaded(false);
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Error getting location:", error);
-                    alert("Failed to retrieve location. Please try again.");
-                    setLoading(false);
-                });
-            } else {
-                alert("Invalid IC Number: Please enter a valid IC number.");
-                setLoading(false);
-            }
-        } catch (error) {
-            console.error("Error fetching user data:", error);
-            alert("Failed to fetch user data. Please try again.");
-            setLoading(false);
-        }
-    };
-    
-    
-    
-
-    // New function to upload image to Imgbb and return the URL
     const uploadImageToImgbb = async (imageData) => {
         if (typeof imageData !== "string") {
             console.error("Invalid image data provided:", imageData);
@@ -225,6 +129,104 @@ const VerifyForm = () => {
         }
     };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!isImageUploaded) {
+            alert("Please upload your image.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await fetch('http://localhost:3001/api/user/user-data');
+            const data = await response.json();
+            const user = data.find(user => user.ic === parseInt(ic, 10));
+
+            if (user) {
+                if (user.submitAttend >= 3) {
+                    alert("You have reached the maximum submission attempts.");
+                    setLoading(false);
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const userLatitude = position.coords.latitude;
+                    const userLongitude = position.coords.longitude;
+
+                    const locationStatus = isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)
+                        ? "matched"
+                        : "does not match";
+
+                    const uploadedImageData = localStorage.getItem("tempImageData");
+                    const originalImageData = user.imageOri;
+
+                    if (!originalImageData) {
+                        alert("Original image data is missing.");
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Convert original image data (array of bytes) to Base64 using Uint8Array
+                    const byteCharacters = new Uint8Array(originalImageData.data);
+                    let binaryString = '';
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        binaryString += String.fromCharCode(byteCharacters[i]);
+                    }
+                    const originalImageBase64 = btoa(binaryString);
+                    const originalImageUrl = `data:image/jpeg;base64,${originalImageBase64}`;
+
+                    // Upload the original image to Imgbb and get the URL
+                    const originalImageUploadUrl = await uploadImageToImgbb(originalImageUrl);
+                    const uploadedImageUrl = await uploadImageToImgbb(uploadedImageData);
+
+                    // Log the original image URL
+                    console.log("Original Image URL: ", originalImageUploadUrl);
+                    console.log("Uploaded Image URL: ", uploadedImageUrl);
+
+                    if (!uploadedImageUrl || !originalImageUploadUrl) {
+                        alert("Failed to upload the images. Please try again.");
+                        setLoading(false);
+                        return;
+                    }
+
+                    const isImageMatched = await verifyFaceWithFacePlusPlus(uploadedImageUrl, originalImageUploadUrl);
+                    console.log("Face Verification Result:", isImageMatched);
+
+                    if (locationStatus === "matched" && isImageMatched.confidence > 50) {
+                        await updateUserStatus(user.ic, "green");
+                        await incrementSubmitAttend(user.ic);
+                        alert("Submitted Successfully: Location and image matched.");
+                    } else if (locationStatus === "matched") {
+                        await updateUserStatus(user.ic, "yellow");
+                        await incrementSubmitAttend(user.ic);
+                        alert("Submitted Successfully: Image does not match.");
+                    } else {
+                        alert("Submitted Successfully: Location does not match.");
+                    }
+
+                    // Reset form state
+                    setIc("");
+                    localStorage.removeItem("tempImageData");
+                    setIsImageUploaded(false);
+                    localStorage.removeItem("icValue"); // Clear IC value from localStorage
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Error getting location:", error);
+                    alert("Failed to retrieve location. Please try again.");
+                    setLoading(false);
+                });
+            } else {
+                alert("Invalid IC Number: Please enter a valid IC number.");
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            alert("Failed to fetch user data. Please try again.");
+            setLoading(false);
+        }
+    };
 
     return (
         <div style={styles.pageWrapper}>
