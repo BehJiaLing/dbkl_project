@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_TOKEN = "1a00ca71f0414c83a2fa11401c8abd36";
+const API_KEY = "BToNdHB1ok4umLD2P0UpgXjB4RLI0yWD";
+const API_SECRET = "_C8seFzywSZgJMNMJMY1w7XAkqMbs3IP";
 
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
@@ -16,21 +17,6 @@ const VerifyForm = () => {
 
     const handleCameraNavigation = () => {
         navigate("/camera");
-    };
-
-    const base64ToBlob = (base64, mimeType) => {
-        if (typeof base64 !== "string") {
-            console.error("Invalid base64 data:", base64);
-            return null;
-        }
-        const parts = base64.split(",");
-        if (parts.length !== 2) {
-            console.error("Invalid base64 format:", base64);
-            return null;
-        }
-        const byteCharacters = atob(parts[1]);
-        const byteNumbers = Array.from(byteCharacters, char => char.charCodeAt(0));
-        return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
     };
 
     const updateUserStatus = async (ic, status) => {
@@ -87,82 +73,91 @@ const VerifyForm = () => {
         return (earthRadius * c) <= tolerance; // Returns true if within tolerance
     };
 
-    const verifyFace = async (image, person_uuid) => {
-        const myHeaders = new Headers();
-        myHeaders.append("token", API_TOKEN);
-
+    const verifyFaceWithFacePlusPlus = async (imageUrl1, imageUrl2) => {
         const formData = new FormData();
-        formData.append("photo", image);
+        formData.append("api_key", API_KEY);
+        formData.append("api_secret", API_SECRET);
+        formData.append("image_url1", imageUrl1);
+        formData.append("image_url2", imageUrl2);
 
         try {
-            const response = await fetch(`https://api.luxand.cloud/photo/verify/${person_uuid}`, {
-                method: 'POST',
-                headers: myHeaders,
+            const response = await fetch("https://api-us.faceplusplus.com/facepp/v3/compare", {
+                method: "POST",
                 body: formData,
             });
             return await response.json();
         } catch (error) {
-            console.error('Error in verifyFace:', error);
+            console.error("Error in verifyFaceWithFacePlusPlus:", error);
             throw new Error('Face verification failed');
         }
     };
 
-    const compareImages = async (uploadedImageData, originalImageData) => {
-        const uploadedImageBlob = base64ToBlob(uploadedImageData, "image/jpeg");
-        const originalImageBlob = base64ToBlob(originalImageData, "image/jpeg");
-    
-        if (!uploadedImageBlob || !originalImageBlob) {
-            console.error("Invalid image data for comparison.");
-            return false;
-        }
-    
-        try {
-            const result = await verifyFace(uploadedImageBlob, originalImageData);
-            console.log("Verification Result:", result); // Log the result for debugging
-            return result.status === "success";
-        } catch (error) {
-            console.error("Error during face verification:", error);
-            return false;
-        }
-    };
-    
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-
+    
         if (!isImageUploaded) {
             alert("Please upload your image.");
             return;
         }
-
+    
         setLoading(true);
-
+    
         try {
             const response = await fetch('http://localhost:3001/api/user/user-data');
             const data = await response.json();
-            const user = data.find(user => user.ic === parseInt(ic, 10)); // Use base 10 for parsing
-
+            const user = data.find(user => user.ic === parseInt(ic, 10));
+    
             if (user) {
                 if (user.submitAttend >= 3) {
                     alert("You have reached the maximum submission attempts.");
                     setLoading(false);
                     return;
                 }
-
+    
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     const userLatitude = position.coords.latitude;
                     const userLongitude = position.coords.longitude;
-
+    
                     const locationStatus = isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)
                         ? "matched"
                         : "does not match";
-
-                    const uploadedImageData = localStorage.getItem("tempImageData"); 
-                    const originalImageData = user.imageOri; 
-
-                    const isImageMatched = await compareImages(uploadedImageData, originalImageData);
-
-                    if (locationStatus === "matched" && isImageMatched) {
+    
+                    const uploadedImageData = localStorage.getItem("tempImageData");
+                    const originalImageData = user.imageOri;
+    
+                    if (!originalImageData) {
+                        alert("Original image data is missing.");
+                        setLoading(false);
+                        return;
+                    }
+    
+                    // Convert original image data (array of bytes) to Base64 using Uint8Array
+                    const byteCharacters = new Uint8Array(originalImageData.data);
+                    let binaryString = '';
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        binaryString += String.fromCharCode(byteCharacters[i]);
+                    }
+                    const originalImageBase64 = btoa(binaryString);
+                    const originalImageUrl = `data:image/jpeg;base64,${originalImageBase64}`;
+    
+                    // Upload the original image to Imgbb and get the URL
+                    const originalImageUploadUrl = await uploadImageToImgbb(originalImageUrl);
+                    const uploadedImageUrl = await uploadImageToImgbb(uploadedImageData);
+    
+                    // Log the original image URL
+                    console.log("Original Image URL: ", originalImageUploadUrl);
+                    console.log("Uploaded Image URL: ", uploadedImageUrl);
+    
+                    if (!uploadedImageUrl || !originalImageUploadUrl) {
+                        alert("Failed to upload the images. Please try again.");
+                        setLoading(false);
+                        return;
+                    }
+    
+                    const isImageMatched = await verifyFaceWithFacePlusPlus(uploadedImageUrl, originalImageUploadUrl);
+                    console.log("Face Verification Result:", isImageMatched);
+    
+                    if (locationStatus === "matched" && isImageMatched.confidence > 50) {
                         await updateUserStatus(user.ic, "green");
                         await incrementSubmitAttend(user.ic);
                         alert("Submitted Successfully: Location and image matched.");
@@ -173,7 +168,7 @@ const VerifyForm = () => {
                     } else {
                         alert("Submitted Successfully: Location does not match.");
                     }
-
+    
                     // Reset form state
                     setIc("");
                     localStorage.removeItem("tempImageData");
@@ -194,6 +189,42 @@ const VerifyForm = () => {
             setLoading(false);
         }
     };
+    
+    
+    
+
+    // New function to upload image to Imgbb and return the URL
+    const uploadImageToImgbb = async (imageData) => {
+        if (typeof imageData !== "string") {
+            console.error("Invalid image data provided:", imageData);
+            return null; // Return null if invalid
+        }
+        
+        const apiKey = "c76cdeefbf39db597e37f74329a4138b"; // Replace with your Imgbb API key
+        const cleanedImageData = imageData.replace(/^data:image\/\w+;base64,/, "");
+
+        const formData = new FormData();
+        formData.append("key", apiKey);
+        formData.append("image", cleanedImageData);
+
+        try {
+            const response = await fetch("https://api.imgbb.com/1/upload", {
+                method: "POST",
+                body: formData,
+            });
+            const result = await response.json();
+            if (result.success) {
+                return result.data.url; // Return the uploaded image URL
+            } else {
+                console.error("Failed to upload image to Imgbb:", result.message);
+                return null; // Return null if failed
+            }
+        } catch (error) {
+            console.error("Error uploading image to Imgbb:", error);
+            return null; // Return null if an error occurs
+        }
+    };
+
 
     return (
         <div style={styles.pageWrapper}>
@@ -223,7 +254,7 @@ const VerifyForm = () => {
             </div>
         </div>
     );
-};
+}
 // Inline styles
 const styles = {
     pageWrapper: {

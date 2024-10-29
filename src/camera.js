@@ -24,12 +24,44 @@ const CameraPage = () => {
         navigate("/verificationForm"); // Navigate back to verification form
     };
 
-    const handleConfirmUpload = () => {
-        alert("Image has been successfully uploaded!"); // Show message box on confirm
+    const handleConfirmUpload = async () => {
+        alert("Uploading image...");
         localStorage.setItem("tempImageData", imageData); // Save captured image to localStorage
-        console.log("Captured Image Data: ", imageData);
-        navigate("/verificationForm"); // Navigate back to verification form
+    
+        // Ensure the image data is valid
+        if (imageData && imageData.startsWith("data:image/jpeg;base64,")) {
+            const apiKey = "c76cdeefbf39db597e37f74329a4138b"; // Replace with your Imgbb API key
+            const cleanedImageData = imageData.replace(/^data:image\/\w+;base64,/, "");
+    
+            // Upload image to Imgbb
+            const formData = new FormData();
+            formData.append("key", apiKey);
+            formData.append("image", cleanedImageData);
+    
+            try {
+                const response = await fetch("https://api.imgbb.com/1/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+                const result = await response.json();
+    
+                if (result.success) {
+                    const imageUrl = result.data.url; // Get the uploaded image URL
+                    console.log("Image uploaded successfully: ", imageUrl);
+                    // Proceed to navigate to verification form
+                    navigate("/verificationForm", { state: { imageUrl, imageData } }); // Pass both URLs
+                } else {
+                    alert("Failed to upload image. Please try again.");
+                }
+            } catch (error) {
+                console.error("Error uploading image to Imgbb:", error);
+                alert("Error uploading image. Please try again.");
+            }
+        } else {
+            alert("Invalid image data. Please try capturing the image again.");
+        }
     };
+    
 
     return (
         <div style={styles.pageWrapper}>
@@ -48,12 +80,13 @@ const CameraPage = () => {
                         <Webcam
                             audio={false}
                             ref={webcamRef}
-                            screenshotFormat="image/png"
+                            screenshotFormat="image/jpeg" // Change to JPEG format
                             style={styles.video}
                             videoConstraints={{
                                 facingMode: "environment" // Use rear camera
                             }}
                         />
+
                         <button style={styles.button} onClick={handleCapture}>Capture</button>
                         <div style={styles.buttonContainer}>
                             <button style={styles.linkButton} onClick={handleCancel}>Cancel</button>
