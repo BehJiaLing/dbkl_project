@@ -6,6 +6,7 @@ const CameraPage = () => {
     const navigate = useNavigate();
     const [imageData, setImageData] = useState(null);
     const [isImageCaptured, setIsImageCaptured] = useState(false);
+    const [loading, setLoading] = useState(false); // Added loading state
 
     const webcamRef = React.useRef(null);
 
@@ -25,7 +26,8 @@ const CameraPage = () => {
     };
 
     const handleConfirmUpload = async () => {
-        alert("Uploading image...");
+        setLoading(true); // Start loading
+    
         localStorage.setItem("tempImageData", imageData); // Save captured image to localStorage
     
         // Ensure the image data is valid
@@ -56,12 +58,14 @@ const CameraPage = () => {
             } catch (error) {
                 console.error("Error uploading image to Imgbb:", error);
                 alert("Error uploading image. Please try again.");
+            } finally {
+                setLoading(false); // Stop loading
             }
         } else {
             alert("Invalid image data. Please try capturing the image again.");
+            setLoading(false); // Stop loading
         }
     };
-    
 
     return (
         <div style={styles.pageWrapper}>
@@ -69,7 +73,9 @@ const CameraPage = () => {
                 {isImageCaptured ? (
                     <>
                         <img src={imageData} alt="Captured" style={styles.capturedImage} />
-                        <button style={styles.button} onClick={handleConfirmUpload}>Confirm</button>
+                        <button style={styles.button} onClick={handleConfirmUpload} disabled={loading}>
+                            {loading ? "Loading..." : "Confirm"} {/* Loading indicator */}
+                        </button>
                         <div style={styles.buttonContainer}>
                             <button style={styles.linkButton} onClick={handleCancel}>Cancel</button>
                             <button style={styles.linkButton} onClick={handleRetake}>Retake</button>
