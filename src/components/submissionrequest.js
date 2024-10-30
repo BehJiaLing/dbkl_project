@@ -2,14 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const SubmissionRequest = () => {
-    const [selectedTries, setSelectedTries] = useState('all');
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    const handleTriesChange = (e) => {
-        setSelectedTries(e.target.value);
-    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -18,7 +13,7 @@ const SubmissionRequest = () => {
                 const response = await axios.get('http://localhost:3001/api/user/user-data');
                 
                 // Debug: Log the response to check if the data format is correct
-                console.log("API Response:", response.data); 
+                console.log("API Response:", response.data);
                 
                 setUsers(Array.isArray(response.data) ? response.data : []);  // Ensure it's an array
                 setError(null);  // Clear any previous errors
@@ -32,10 +27,27 @@ const SubmissionRequest = () => {
         fetchData();
     }, []);
 
-    // Filter users based on selected number of tries (submitAttend)
-    const filteredUsers = selectedTries === 'all'
-        ? users
-        : users.filter(user => user.submitAttend === parseInt(selectedTries, 10));
+    // Filter users with submitAttend greater than 3
+    const filteredUsers = users.filter(user => user.submitAttend > 3);
+
+    // Handle Accept button click
+    const handleAccept = async (userId) => {
+        try {
+            // Make a request to reset submission count and remove from FailedSubmission
+            const response = await axios.put(`http://localhost:3001/api/user/FailedSubmission/${userId}`);
+
+            if (response.status === 200) {
+                // Update UI to remove the user from the list
+                setUsers((prevUsers) => prevUsers.filter(user => user.id !== userId));
+                alert(response.data.message);
+            } else {
+                alert("Failed to reset user's submission count. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error accepting user:", error);
+            alert("An error occurred while processing the request.");
+        }
+    };
 
     return (
         <div className="container">
@@ -43,31 +55,27 @@ const SubmissionRequest = () => {
             {error && <div>Error: {error}</div>}
 
             {!loading && !error && (
-                <>
-                    <div className="tries-filter">
-                        <label htmlFor="tries">Tries: </label>
-                        <select id="tries" value={selectedTries} onChange={handleTriesChange}>
-                            <option value="all">All</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                        </select>
-                    </div>
-
-                    <div className="user-list">
-                        <h3>List of Users</h3>
-                        {filteredUsers.length > 0 ? (
-                            <ul>
-                                {filteredUsers.map((user, index) => (
-                                    <li key={index}>
-                                        {user.username} - {user.submitAttend !== undefined ? user.submitAttend : '0'} tries
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>No users found with the selected number of tries.</p>
-                        )}
-                    </div>
-                </>
+                <div className="user-list">
+                    <h3 style={{ fontSize: '16px', fontWeight: 'normal' }}>More Than 3 Times</h3>
+                    
+                    {filteredUsers.length > 0 ? (
+                        <ul>
+                            {filteredUsers.map((user, index) => (
+                                <li key={index} style={{ marginBottom: '8px' }}>
+                                    {user.username} {/* Removed the tries count */}
+                                    <button 
+                                        style={{ marginLeft: '10px' }}
+                                        onClick={() => handleAccept(user.id)} // Pass user.id instead of user.username
+                                    >
+                                        Accept
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No users found with more than 3 tries.</p>
+                    )}
+                </div>
             )}
         </div>
     );
