@@ -8,15 +8,22 @@ import DataDetailsContent from "./dash_data-details";
 import ErrorComponent from "./components/errorCom";
 
 const Dashboard = () => {
-    const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+    const initialIsMobile = window.innerWidth <= 768;
+    const [isMobile, setIsMobile] = useState(initialIsMobile);
+    const [isSidebarVisible, setIsSidebarVisible] = useState(!initialIsMobile);
     const [activeContent, setActiveContent] = useState("overview");
     const [allowedPages, setAllowedPages] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        const handleResize = () =>{
+            const mobileView = window.innerWidth <= 768;
+            setIsMobile(mobileView);
+            if (mobileView) {
+                setIsSidebarVisible(false); // Hide sidebar on mobile
+            }
+        };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
@@ -81,6 +88,8 @@ const Dashboard = () => {
         if (menuItem === "logout") {
             localStorage.removeItem("authToken");
             localStorage.removeItem("adminId");
+            localStorage.removeItem("isSidebarVisible");
+            localStorage.removeItem("activeContent");
             navigate("/login");
         } else {
             setActiveContent(menuItem);
