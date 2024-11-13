@@ -1,11 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const VerifyForm = () => {
     const [ic, setIc] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+    
     const handleCameraNavigation = () => {
         navigate("/camera");
     };
@@ -124,8 +131,8 @@ const VerifyForm = () => {
     };
 
     return (
-        <div style={styles.pageWrapper}>
-            <div style={styles.container}>
+        <div style={isMobile ? styles.pageWrapperMobile : styles.pageWrapper}>
+            <div style={isMobile ? styles.containerMobile : styles.container}>
                 <h2 style={styles.title}>Verify</h2>
                 <p style={styles.subtitle}>Please fill in your credentials</p>
                 <form onSubmit={handleSubmit}>
@@ -167,10 +174,30 @@ const styles = {
         backgroundPosition: "center",  
         backgroundRepeat: "no-repeat",
     },
+    pageWrapperMobile: {
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "20px",
+        backgroundImage: "url('/assets/login/background.png')",
+        backgroundColor: "#2d2d3a",
+        backgroundSize: "cover",
+        backgroundPosition: "left center",
+        backgroundRepeat: "no-repeat",
+    },
     container: {
         maxWidth: "300px",
         width: "100%",
         padding: "20px",
+        backgroundColor: "#3e3e4f",
+        borderRadius: "10px",
+        textAlign: "left",
+    },
+    containerMobile: {
+        maxWidth: "100%",
+        width: "90%",
+        padding: "15px",
         backgroundColor: "#3e3e4f",
         borderRadius: "10px",
         textAlign: "left",
