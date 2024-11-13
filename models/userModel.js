@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 const UserModel = {
     getUserData: async () => {
-        const [rows] = await db.query('SELECT ic, username, submitAttend, latitude, longitude, status, address FROM user');
+        const [rows] = await db.query('SELECT ic, username, submitAttend, latitude, longitude, status, address, imageOri FROM user');
         return rows; 
     },
 

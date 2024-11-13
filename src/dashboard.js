@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from './axiosConfig';
 import Navbar from "./components/navbar";
 import Sidebar from "./components/sidebar";
 import OverviewContent from "./dash_overview";
@@ -10,35 +10,40 @@ import ErrorComponent from "./components/errorCom";
 const Dashboard = () => {
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const [activeContent, setActiveContent] = useState("overview");
-    const [allowedPages, setAllowedPages] = useState([]); // To store allowed pages
+    const [allowedPages, setAllowedPages] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const navigate = useNavigate();
 
     useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    useEffect(() => {
         const token = localStorage.getItem("authToken");
-        const adminId = localStorage.getItem("adminId"); // Get adminId from localStorage
+        const adminId = localStorage.getItem("adminId");
         if (!token || !adminId) {
             navigate("/error");
             return;
         }
 
-        // Fetch allowed pages for the admin based on adminId
         const fetchPageAccess = async () => {
             try {
-                const response = await axios.get("http://localhost:3001/api/access-control/page-data", {
+                const response = await axiosInstance.get("/api/access-control/page-data", {
                     params: { adminId }
                 });
 
                 const allowedPageIds = response.data
-                    .filter(page => page.admin_id === parseInt(adminId)) // Filter by adminId
-                    .map(page => page.page_id); // Get page_id
+                    .filter(page => page.admin_id === parseInt(adminId))
+                    .map(page => page.page_id);
 
-                // Map page_id to page names
                 const pageNames = allowedPageIds.map(pageId => {
                     if (pageId === 1) return "overview";
                     if (pageId === 2) return "details";
                     return null;
-                }).filter(Boolean); // Remove null values
+                }).filter(Boolean);
 
                 setAllowedPages(pageNames);
                 setLoading(false);
@@ -56,18 +61,18 @@ const Dashboard = () => {
         const savedActiveContent = localStorage.getItem("activeContent");
 
         if (savedSidebarVisibility) {
-            setIsSidebarVisible(JSON.parse(savedSidebarVisibility)); 
+            setIsSidebarVisible(JSON.parse(savedSidebarVisibility));
         }
 
         if (savedActiveContent) {
             setActiveContent(savedActiveContent);
         }
-    }, []); 
+    }, []);
 
     const toggleSidebar = () => {
         setIsSidebarVisible((prevState) => {
             const newState = !prevState;
-            localStorage.setItem("isSidebarVisible", JSON.stringify(newState)); 
+            localStorage.setItem("isSidebarVisible", JSON.stringify(newState));
             return newState;
         });
     };
@@ -75,22 +80,21 @@ const Dashboard = () => {
     const handleMenuClick = (menuItem) => {
         if (menuItem === "logout") {
             localStorage.removeItem("authToken");
-            localStorage.removeItem("adminId"); // Clear adminId
+            localStorage.removeItem("adminId");
             navigate("/login");
-        } else { 
+        } else {
             setActiveContent(menuItem);
-            localStorage.setItem("activeContent", menuItem); 
-        } 
+            localStorage.setItem("activeContent", menuItem);
+        }
     };
 
     const renderContent = () => {
         if (loading) {
-            return <div>Loading...</div>; // Show loading indicator while checking access
+            return <div>Loading...</div>;
         }
 
-        // Check if the admin has access to the current content
         if (!allowedPages.includes(activeContent)) {
-            return <ErrorComponent />; // Render ErrorComponent if access is denied
+            return <ErrorComponent />;
         }
 
         switch (activeContent) {
@@ -99,7 +103,7 @@ const Dashboard = () => {
             case "details":
                 return <DataDetailsContent />;
             default:
-                return <ErrorComponent />; // Fallback if no valid content is found
+                return <ErrorComponent />;
         }
     };
 
@@ -116,13 +120,17 @@ const Dashboard = () => {
                 <div
                     style={{
                         ...styles.contentContainer,
-                        width: isSidebarVisible ? "70%" : "100%",
+                        width: isMobile ? "100%" : isSidebarVisible ? "70%" : "100%",
                     }}
                 >
                     {renderContent()}
                 </div>
 
-                {isSidebarVisible && <Sidebar />}
+                {isSidebarVisible && <Sidebar isMobile={isMobile} />}
+
+                {isMobile && isSidebarVisible && (
+                    <div style={styles.overlay} onClick={() => setIsSidebarVisible(false)} />
+                )}
             </div>
         </div>
     );
@@ -138,6 +146,7 @@ const styles = {
         display: "flex",
         flex: 1,
         overflow: "hidden",
+        position: "relative", // Important for absolute positioning of sidebar
     },
     contentContainer: {
         display: "flex",
@@ -146,6 +155,15 @@ const styles = {
         justifyContent: "center",
         backgroundColor: "#f4f4f4",
         transition: "width 0.3s ease",
+    },
+    overlay: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent black
+        zIndex: 999, // Ensure the overlay is above other content
     },
 };
 

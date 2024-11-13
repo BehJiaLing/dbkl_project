@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PolarArea } from 'react-chartjs-2';
 import { Chart, ArcElement, RadialLinearScale, Tooltip, Legend } from 'chart.js';
 import axios from 'axios';  
+import axiosInstance from '../axiosConfig';
 
 Chart.register(ArcElement, RadialLinearScale, Tooltip, Legend);
 
@@ -30,7 +31,7 @@ const PolarAreaChart = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get("http://localhost:3001/api/chart/chart-data"); 
+                const response = await axiosInstance.get("/api/chart/chart-data"); 
                 console.log("Chart Data:", response.data); 
 
                 setChartData(prevState => ({
@@ -48,6 +49,12 @@ const PolarAreaChart = () => {
         };
 
         fetchData();
+
+        // Set up interval to fetch data every 1 minute (60000 ms)
+        const intervalId = setInterval(fetchData, 60000);
+
+        // Clean up interval on component unmount
+        return () => clearInterval(intervalId);
     }, []);
 
     const options = {
