@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from './axiosConfig';
 
 const API_KEY = "BToNdHB1ok4umLD2P0UpgXjB4RLI0yWD";
 const API_SECRET = "_C8seFzywSZgJMNMJMY1w7XAkqMbs3IP";
@@ -34,45 +35,78 @@ const VerifyForm = () => {
 
     const updateUserStatus = async (ic, status) => {
         try {
-            const response = await fetch(`http://localhost:3001/api/user/update-status`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ ic, status }),
+            const response = await axiosInstance.put(`/api/user/update-status`, {
+                ic,
+                status,
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                alert(errorData.message || "Failed to update status. Please try again.");
+            if (response.status !== 200) {
+                alert(response.data.message || "Failed to update status. Please try again.");
             }
         } catch (error) {
             console.error("Error updating status:", error);
-            alert("Failed to update status. Please try again.");
+            alert(error.response?.data?.message || "Failed to update status. Please try again.");
         }
     };
 
-    const incrementSubmitAttend = async (ic) => {
+    // const updateUserStatus = async (ic, status) => {
+    //     try {
+    //         const response = await fetch(`http://localhost:3001/api/user/update-status`, {
+    //             method: 'PUT',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //             },
+    //             body: JSON.stringify({ ic, status }),
+    //         });
+
+    //         if (!response.ok) {
+    //             const errorData = await response.json();
+    //             alert(errorData.message || "Failed to update status. Please try again.");
+    //         }
+    //     } catch (error) {
+    //         console.error("Error updating status:", error);
+    //         alert("Failed to update status. Please try again.");
+    //     }
+    // };
+
+    const incrementSubmitAttend = async (ic, status) => {
         try {
-            const response = await fetch(`http://localhost:3001/api/user/increment-submit-attend`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ ic }),
+            const response = await axiosInstance.put(`/api/user/increment-submit-attend`, {
+                ic,
             });
 
-            const result = await response.json();
-            if (!response.ok) {
-                alert(result.message || "Failed to increment submission. Please try again.");
-            } else if (result.message === 'Maximum submit attempts reached') {
+            if (response.status !== 200) {
+                alert(response.data.message || "Failed to increment submission. Please try again.");
+            } else if (response.data.message === 'Maximum submit attempts reached') {
                 alert("You have reached the maximum submission attempts.");
             }
         } catch (error) {
             console.error("Error updating submitAttend:", error);
-            alert("Failed to increment submission. Please try again.");
+            alert(error.response?.data?.message || "Failed to increment submission. Please try again.");
         }
     };
+
+    // const incrementSubmitAttend = async (ic) => {
+    //     try {
+    //         const response = await fetch(`http://localhost:3001/api/user/increment-submit-attend`, {
+    //             method: 'PUT',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //             },
+    //             body: JSON.stringify({ ic }),
+    //         });
+
+    //         const result = await response.json();
+    //         if (!response.ok) {
+    //             alert(result.message || "Failed to increment submission. Please try again.");
+    //         } else if (result.message === 'Maximum submit attempts reached') {
+    //             alert("You have reached the maximum submission attempts.");
+    //         }
+    //     } catch (error) {
+    //         console.error("Error updating submitAttend:", error);
+    //         alert("Failed to increment submission. Please try again.");
+    //     }
+    // };
 
     const isWithinDistance = (lat1, lon1, lat2, lon2, tolerance) => {
         const earthRadius = 6371; // Radius of the earth in km
@@ -147,8 +181,10 @@ const VerifyForm = () => {
         setLoading(true);
 
         try {
-            const response = await fetch('http://localhost:3001/api/user/user-data');
-            const data = await response.json();
+            const response = await axiosInstance.get('/api/user/user-data');
+            const data = response.data;
+            //const response = await fetch('http://localhost:3001/api/user/user-data');
+            //const data = await response.json();
             const user = data.find(user => user.ic === parseInt(ic, 10));
 
             if (user) {
@@ -205,12 +241,18 @@ const VerifyForm = () => {
                         await updateUserStatus(user.ic, "green");
                         await incrementSubmitAttend(user.ic);
                         alert("Submitted Successfully: Location and image matched.");
-                    } else if (locationStatus === "matched") {
+                    } else if (locationStatus === "does not match" && isImageMatched.confidence > 50) {
                         await updateUserStatus(user.ic, "yellow");
                         await incrementSubmitAttend(user.ic);
-                        alert("Submitted Successfully: Image does not match.");
-                    } else {
-                        alert("Submitted Successfully: Location does not match.");
+                        alert("Submitted Successfully: Location does not match; Image matched.");
+                    } else if (locationStatus === "matched" && isImageMatched.confidence < 50) {
+                        await updateUserStatus(user.ic, "red");
+                        await incrementSubmitAttend(user.ic);
+                        alert("Submitted Successfully: Location matched; Image does not match.");
+                    } else if (locationStatus === "does not match" && isImageMatched.confidence < 50) {
+                        await updateUserStatus(user.ic, "red");
+                        await incrementSubmitAttend(user.ic);
+                        alert("Submitted Successfully: Location and image does not match.");
                     }
 
                     // Reset form state
