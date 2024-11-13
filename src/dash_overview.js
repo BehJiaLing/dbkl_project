@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
+import axiosInstance from './axiosConfig';
 import L from 'leaflet';
-import greenIcon from 'leaflet/dist/images/green-icon.png'; 
+import greenIcon from 'leaflet/dist/images/green-icon.png';
 import redIcon from 'leaflet/dist/images/red_icon.png';
 import yellowIcon from 'leaflet/dist/images/yellow_icon.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -24,7 +25,7 @@ const createCustomIcon = (status) => {
             iconUrl = yellowIcon;
             break;
         default:
-            iconUrl = markerIcon; 
+            iconUrl = markerIcon;
             break;
     }
 
@@ -42,29 +43,45 @@ const createCustomIcon = (status) => {
 const OverviewContent = () => {
     const [users, setUsers] = useState([]);
     const [addresses, setAddresses] = useState({});
-    const [filter, setFilter] = useState('all'); 
+    const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     useEffect(() => {
-        axios.get('http://localhost:3001/api/user/user-data')
-            .then(async (response) => {
-                setUsers(response.data);
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
-                const addressPromises = response.data.map(async (user) => {
-                    const address = await getAddressFromCoordinates(user.latitude, user.longitude);
-                    return { ic: user.ic, address };
-                });
+    const fetchData = async () => {
+        try {
+            const response = await axiosInstance.get('/api/user/user-data');
+            setUsers(response.data);
 
-                const addressesArray = await Promise.all(addressPromises);
-                const addressesMap = addressesArray.reduce((acc, curr) => {
-                    acc[curr.ic] = curr.address;
-                    return acc;
-                }, {});
-                setAddresses(addressesMap);
-            })
-            .catch((error) => {
-                console.error('Error fetching user data:', error);
+            const addressPromises = response.data.map(async (user) => {
+                const address = await getAddressFromCoordinates(user.latitude, user.longitude);
+                return { ic: user.ic, address };
             });
+
+            const addressesArray = await Promise.all(addressPromises);
+            const addressesMap = addressesArray.reduce((acc, curr) => {
+                acc[curr.ic] = curr.address;
+                return acc;
+            }, {});
+            setAddresses(addressesMap);
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+
+        // Set up interval to fetch data every 1 minutes
+        const intervalId = setInterval(fetchData, 60000);
+
+        // Clean up the interval when the component unmounts
+        return () => clearInterval(intervalId);
     }, []);
 
     // Function to fetch address using nominatim openstreetmap API
@@ -81,40 +98,16 @@ const OverviewContent = () => {
         }
     };
 
-    // Function to fetch address using Google Maps Geocoding API
-    // const getAddressFromCoordinates = async (latitude, longitude) => {
-    //     const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY';  // Replace with your actual API key
-    //     try {
-    //         const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-    //         if (response.data.status === 'OK' && response.data.results.length > 0) {
-    //             return response.data.results[0].formatted_address || 'Address not found';
-    //         } else {
-    //             return 'Address not found';
-    //         }
-    //     } catch (error) {
-    //         console.error('Error fetching address:', error);
-    //         return 'Address not found';
-    //     }
-    // };
-
     // set offset to have multiple user pointer
     const getOffsetCoordinates = (latitude, longitude, index) => {
         const offset = index * 0.00001; // Small offset for each user
         return [latitude + offset, longitude + offset];
     };
 
-    // multiple pop-up at one pointer
-    // const getUsersAtSameLocation = (latitude, longitude) => {
-    //     return users.filter((user) => user.latitude === latitude && user.longitude === longitude);
-    // };
-
     // Function to handle the filter change
     const handleFilterChange = (event) => {
         setFilter(event.target.value);
     };
-
-    // Filter users based on the selected status filter
-    // const filteredUsers = filter === 'all' ? users : users.filter(user => user.status === filter);
 
     // Function to handle search query change
     const handleSearchChange = (event) => {
@@ -138,37 +131,19 @@ const OverviewContent = () => {
 
     return (
         <div style={styles.overviewContainer}>
-            <div style={{display: 'flex', flexDirection: 'row', width: '100%', marginBottom: '20px'}}>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', marginBottom: '20px' }} >
                 <div style={styles.mapContainer}>
                     <MapContainer center={[4.5, 102]} zoom={7} style={{ height: '400px', width: '100%' }}>
+                        <div style={isMobile ? styles.statusMobileExplanation : styles.statusExplanation}>
+                            <h3>Status Legend</h3>
+                            <p><span style={styles.greenDot}></span> Green: All Checked!</p>
+                            <p><span style={styles.yellowDot}></span> Yellow: Address Failed!</p>
+                            <p><span style={styles.redDot}></span> Red: Haven't Submit!</p>
+                        </div>
                         <TileLayer
                             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                         />
-                        {/* multiple pop-up at one pointer */}
-                        {/* {Array.isArray(filteredUsers) && filteredUsers.map((user, index) => {
-                        const usersAtLocation = getUsersAtSameLocation(user.latitude, user.longitude);
-                        return (
-                            <Marker
-                                key={`${user.ic}-${index}`}
-                                position={[user.latitude, user.longitude]}
-                                icon={createCustomIcon(user.status)}
-                            >
-                                <Popup>
-                                    <div>
-                                        <h4>Users at this location:</h4>
-                                        <ul>
-                                            {usersAtLocation.map((u) => (
-                                                <li key={u.ic}>
-                                                    Name: {u.username} | Status: {u.status}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        );
-                    })} */}
                         {Array.isArray(filteredUsers) && filteredUsers.map((user, index) => (
                             <Marker
                                 key={user.ic}
@@ -185,17 +160,6 @@ const OverviewContent = () => {
                                                 Location: {user.address} <br />
                                             </>
                                         )}
-                                        {/* Location Name: {addresses[user.ic]?.name || 'Fetching name...'} <br /> */}
-                                        {/* Full Address: {addresses[user.ic]?.display_name || 'Fetching address...'} <br /> */}
-                                        {/* {addresses[user.ic]?.name && (
-                                            <a
-                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addresses[user.ic]?.name || `${user.latitude},${user.longitude}`)}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                View on Google Maps
-                                            </a>
-                                        )} */}
                                         {user.address && (
                                             <a
                                                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(user.address || `${user.latitude},${user.longitude}`)}`}
@@ -207,41 +171,20 @@ const OverviewContent = () => {
                                         )}
                                     </div>
                                 </Popup>
-                                {/* using Google Map API get the address link
-                            <Popup>
-                                <div style={getPopupStyleByStatus(user.status)}> 
-                                    Name: {user.username} <br />
-                                    Location Name: {addresses[user.ic]?.name || 'Fetching name...'} <br />
-                                    Full Address: {addresses[user.ic]?.display_name || 'Fetching address...'} <br />
-                                    <a
-                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addresses[user.ic] || '')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        View on Google Maps
-                                    </a>
-                                </div>
-                            </Popup> */}
                             </Marker>
                         ))}
                     </MapContainer>
                 </div>
-                <div style={styles.statusExplanation}>
-                    <h3>Status Legend</h3>
-                    <p><span style={styles.greenDot}></span> Green: All Checked!</p>
-                    <p><span style={styles.yellowDot}></span> Yellow: Address Failed!</p>
-                    <p><span style={styles.redDot}></span> Red: Haven't Submit!</p>
-                </div>
             </div>
 
             <div style={styles.filterContainer}>
-                <div style={styles.filter2Container}>
-                    <div style={styles.leftContainer}>
+                <div style={isMobile ? styles.filter2MobileContainer : styles.filter2Container}>
+                    <div style={isMobile ? styles.leftMobileContainer : styles.leftContainer}>
                         <h3>
                             Overview to All User's Status
                         </h3>
                     </div>
-                    <div style={styles.rightContainer}>
+                    <div style={isMobile ? styles.rightMobileContainer : styles.rightContainer}>
                         <select
                             id="statusFilter"
                             value={filter}
@@ -264,7 +207,7 @@ const OverviewContent = () => {
                 </div>
             </div>
 
-            <div style={styles.tableContainer}>
+            <div style={isMobile ? styles.tableMobileContainer : styles.tableContainer}>
                 <table style={styles.table}>
                     <thead>
                         <tr>
@@ -307,10 +250,27 @@ const styles = {
         boxSizing: "border-box",
     },
     statusExplanation: {
+        justifyContent: "center",
         backgroundColor: "#f9f9f9",
-        textAlign: "left",
-        width: "30%",
-        padding: "10px 20px"
+        textAlign: "center",
+        width: "20%",
+        height: "35%",
+        padding: "10px",
+        position: "absolute",
+        bottom: 0,
+        right: 0,
+        zIndex: 1000,
+    },
+    statusMobileExplanation: {
+        backgroundColor: "#f9f9f9",
+        textAlign: "start",
+        width: "40%",
+        height: "40%",
+        padding: "10px",
+        position: "absolute",
+        top: 0,
+        right: 0,
+        zIndex: 1000,
     },
     greenDot: {
         height: "12px",
@@ -339,7 +299,6 @@ const styles = {
     mapContainer: {
         width: "100%",
         height: "100%",
-        maxWidth: "1200px", // Set a max width to limit content width
     },
     filterContainer: {
         display: "flex",
@@ -359,14 +318,32 @@ const styles = {
         padding: "10px 20px",
         width: "100%"
     },
+    filter2MobileContainer: {
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 20px",
+        width: "100%"
+    },
     leftContainer: {
         width: "40%"
+    },
+    leftMobileContainer: {
+        width: "100%",
     },
     rightContainer: {
         display: "flex",
         flexDirection: "row",
         width: "60%",
         gap: "20px"
+    },
+    rightMobileContainer: {
+        display: "flex",
+        flexDirection: "row",
+        width: "100%",
+        gap: "10px",
+        paddingBottom: "20px"
     },
     statusLabel: {
         fontSize: "14px",
@@ -396,11 +373,16 @@ const styles = {
     },
     tableContainer: {
         width: "100%",
-        maxWidth: "1200px", // Set max width to match the rest
-        marginBottom: "20px", // Add space at the bottom
+        maxWidth: "100%",
+    },
+    tableMobileContainer: {
+        width: "100%",
+        maxWidth: "100%",
+        overflowX: "auto"
     },
     table: {
         width: "100%",
+        minWidth: "600px",
         borderCollapse: "collapse",
         fontSize: "16px",
     },

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import PointFilter from "./components/pointfilter"; // Assuming you have this component
+import axiosInstance from './axiosConfig'; 
 import axios from "axios";
 
 const DataDetailsContent = () => {
@@ -14,7 +15,7 @@ const DataDetailsContent = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/api/user/user-data');
+                const response = await axiosInstance.get('/api/user/user-data');
                 const mappedData = response.data.map(item => ({
                     personName: item.username,
                     ic: item.ic,

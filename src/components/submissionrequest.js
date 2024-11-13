@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import axiosInstance from '../axiosConfig';
 
 const SubmissionRequest = () => {
     const [users, setUsers] = useState([]);
@@ -10,7 +11,7 @@ const SubmissionRequest = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const response = await axios.get('http://localhost:3001/api/user/user-data');
+                const response = await axiosInstance.get('/api/user/user-data');
                 
                 // Debug: Log the response to check if the data format is correct
                 console.log("API Response:", response.data);

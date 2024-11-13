@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from './axiosConfig'; 
 
 const LoginForm = () => {
     const [username, setUsername] = useState("");
@@ -24,7 +24,7 @@ const LoginForm = () => {
 
 
         try {
-            const response = await axios.get("http://localhost:3001/api/login/login-data");
+            const response = await axiosInstance.get("/api/login/login-data");
 
             // console.log(response.data); // Array of user objects
 
