@@ -32,7 +32,7 @@ const PolarAreaChart = () => {
         const fetchData = async () => {
             try {
                 const response = await axiosInstance.get("/api/chart/chart-data"); 
-                console.log("Chart Data:", response.data); 
+                // console.log("Chart Data:", response.data); 
 
                 setChartData(prevState => ({
                     ...prevState,

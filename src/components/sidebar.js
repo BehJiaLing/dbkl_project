@@ -1,5 +1,4 @@
 import PolarAreaChart from "./polar-area-chart";
-import SubmissionRequest from "./submissionrequest";
 
 const Sidebar = ({ isMobile }) => {
     return (
@@ -8,10 +7,6 @@ const Sidebar = ({ isMobile }) => {
                 <div>
                     <h3>Users Status Overview</h3>
                     <PolarAreaChart />
-                </div>
-                <div>
-                    <h3>Submission Request</h3>
-                    <SubmissionRequest />
                 </div>
             </div>
         </div>
