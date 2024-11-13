@@ -1,14 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from './axiosConfig'; 
 
 const LoginForm = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    const [error, setError] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false); 
     const navigate = useNavigate();
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -20,15 +27,12 @@ const LoginForm = () => {
             return;
         }
 
-        setIsLoading(true); // Start loading
+        setIsLoading(true); 
 
 
         try {
             const response = await axiosInstance.get("/api/login/login-data");
 
-            // console.log(response.data); // Array of user objects
-
-            // Check if any user matches the entered username and password
             const foundUser = response.data.find(
                 (user) => user.username === username && user.password === password
             );
@@ -53,8 +57,8 @@ const LoginForm = () => {
     };
 
     return (
-        <div style={styles.pageWrapper}>
-            <div style={styles.container}>
+        <div style={isMobile ? styles.pageWrapperMobile : styles.pageWrapper}>
+            <div style={isMobile ? styles.containerMobile : styles.container}>
                 <h1 style={styles.title}>Login</h1>
                 <h2 style={styles.subTitle}>Welcome Back!</h2>
                 <form onSubmit={handleLogin}>
@@ -71,7 +75,7 @@ const LoginForm = () => {
                     <div style={styles.inputGroup}>
                         <label style={styles.label}>Password:</label>
                         <input
-                            type={showPassword ? "text" : "password"} // Toggle between text and password
+                            type={showPassword ? "text" : "password"} 
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             style={styles.input}
@@ -81,7 +85,7 @@ const LoginForm = () => {
                             <input
                                 type="checkbox"
                                 checked={showPassword}
-                                onChange={() => setShowPassword(!showPassword)} // Toggle password visibility
+                                onChange={() => setShowPassword(!showPassword)} 
                                 style={styles.checkbox}
                             />
                             <label style={styles.checkboxLabel}>Show Password</label>
@@ -112,6 +116,19 @@ const styles = {
         backgroundRepeat: "no-repeat",
     },
 
+    pageWrapperMobile: {
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "20px",
+        backgroundImage: "url('/assets/login/background.png')",
+        backgroundColor: "#2d2d3a",
+        backgroundSize: "cover",
+        backgroundPosition: "left center",
+        backgroundRepeat: "no-repeat",
+    },
+
     container: {
         maxWidth: "300px",
         width: "100%",
@@ -120,12 +137,23 @@ const styles = {
         borderRadius: "10px",
         textAlign: "left",
     },
+
+    containerMobile: {
+        maxWidth: "100%",
+        width: "90%",
+        padding: "15px",
+        backgroundColor: "#3e3e4f",
+        borderRadius: "10px",
+        textAlign: "left",
+    },
+
     title: {
         fontSize: "32px",
         color: "white",
         marginTop: "10px",
         marginBottom: "10px",
     },
+
     subTitle: {
         fontSize: "20px",
         color: "white",
