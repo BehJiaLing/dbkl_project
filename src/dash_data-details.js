@@ -26,6 +26,7 @@ const DataDetailsContent = () => {
                 const mappedData = response.data.map(item => ({
                     personName: item.username,
                     ic: item.ic,
+                    address: item.address,
                     latitude: item.latitude,
                     longitude: item.longitude,
                     pointType: item.status,
@@ -131,7 +132,8 @@ const DataDetailsContent = () => {
                                     <tr key={index}>
                                         <td style={styles.td}>{item.personName}</td>
                                         <td style={styles.td}>{item.ic}</td>
-                                        <td style={styles.td}>{addressInfo.name || 'Fetching name...'}</td>
+                                        <td style={styles.td}>{item.address}</td>
+                                        {/* <td style={styles.td}>{addressInfo.name || 'Fetching name...'}</td> */}
                                         <td style={styles.td}>{addressInfo.display_name || 'Fetching address...'}</td>
                                         <td style={styles.td}>{`${item.latitude}, ${item.longitude}`}</td>
                                         <td style={styles.td}>{item.uploadedTime}</td>
