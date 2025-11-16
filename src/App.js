@@ -6,6 +6,9 @@ import Dashboard from "./dashboard";
 import Verification from "./verificationForm";  
 import CameraPage from './camera';
 import ErrorPage from "./error";  
+import SignUpForm from './SignUpFrom';
+import ForgotPassword from './ForgotPassword';
+import ResetPassword from './ResetPassword';
 
 function App() {
   return (
@@ -13,6 +16,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/signup" element={<SignUpForm />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/verificationForm" element={<Verification />} />
         <Route path="/camera" element={<CameraPage />} />
