@@ -2,26 +2,102 @@ const db = require('../config/db');
 
 const UserModel = {
     getUserData: async () => {
-        const [rows] = await db.query('SELECT ic, username, submitAttend, latitude, longitude, status, address, imageOri FROM user');
-        return rows; 
+        const [rows] = await db.query(`
+        SELECT
+            id,
+            ic,
+            username,
+            address,
+            latitude,
+            longitude,
+            imageOri,
+            status,
+            submitAttend,
+            deleted,
+            created_at
+        FROM user
+        WHERE deleted = 0
+        ORDER BY id ASC
+    `);
+        return rows;
     },
 
-    updateUserStatus: async (ic, status) => {
-        try {
-            const [result] = await db.query('UPDATE user SET status = ? WHERE ic = ?', [status, ic]);
-            return result; 
-        } catch (error) {
-            throw new Error('Failed to update user status: ' + error.message);
-        }
+    updateUserStatusById: async (userId, status) => {
+        const [result] = await db.query(
+            'UPDATE user SET status = ? WHERE id = ? AND deleted = 0',
+            [status, userId]
+        );
+        return result;
     },
-    incrementSubmitAttend: async (ic) => {
-        try {
-            const [result] = await db.query('UPDATE user SET submitAttend = submitAttend + 1 WHERE ic = ?', [ic]);
-            return result; 
-        } catch (error) {
-            throw new Error('Failed to increment submitAttend: ' + error.message);
-        }
-    }
+
+    incrementSubmitAttendById: async (userId) => {
+        const [result] = await db.query(
+            `
+            UPDATE user
+            SET submitAttend = submitAttend + 1
+            WHERE id = ? AND deleted = 0
+            `,
+            [userId]
+        );
+        return result;
+    },
+
+    // getActiveUsers: async () => {
+    //     const [rows] = await db.query(`
+    //         SELECT
+    //             id,
+    //             ic,
+    //             username,
+    //             address,
+    //             latitude,
+    //             longitude,
+    //             imageOri,
+    //             status,
+    //             submitAttend,
+    //             deleted,
+    //             created_at
+    //         FROM user
+    //         WHERE deleted = 0
+    //         ORDER BY id ASC
+    //     `);
+    //     return rows;
+    // },
+
+    softDeleteUser: async (id) => {
+        await db.query("UPDATE user SET deleted = 1 WHERE id = ?", [id]);
+    },
+
+    createUser: async (user) => {
+        const {
+            ic,
+            username,
+            address,
+            latitude,
+            longitude,
+            imageEncryptedBase64,
+            status,
+            submitAttend,
+        } = user;
+
+        await db.query(
+            `
+            INSERT INTO user
+                (ic, username, address, latitude, longitude,
+                 imageOri, status, submitAttend, deleted, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())
+            `,
+            [
+                ic,
+                username,
+                address,
+                latitude,
+                longitude,
+                Buffer.from(imageEncryptedBase64, "utf8"), // store encryption text as BLOB
+                status,
+                submitAttend,
+            ]
+        );
+    },
 };
 
 
