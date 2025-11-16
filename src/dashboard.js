@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from './axiosConfig';
+import axiosInstance from "./axiosConfig";
 import Navbar from "./components/navbar";
 import Sidebar from "./components/sidebar";
 import OverviewContent from "./dash_overview";
 import DataDetailsContent from "./dash_data-details";
+import RoleManagement from "./RoleManagement";
+import UserListPage from "./UserListPage";
 import ErrorComponent from "./components/errorCom";
 
 const Dashboard = () => {
@@ -14,55 +16,61 @@ const Dashboard = () => {
     const [activeContent, setActiveContent] = useState("overview");
     const [allowedPages, setAllowedPages] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [role, setRole] = useState(null);
+
     const navigate = useNavigate();
 
+    // Handle resize for mobile / sidebar
     useEffect(() => {
-        const handleResize = () =>{
+        const handleResize = () => {
             const mobileView = window.innerWidth <= 768;
             setIsMobile(mobileView);
             if (mobileView) {
-                setIsSidebarVisible(false); // Hide sidebar on mobile
+                setIsSidebarVisible(false);
             }
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    useEffect(() => {
-        const token = localStorage.getItem("authToken");
-        const adminId = localStorage.getItem("adminId");
-        if (!token || !adminId) {
-            navigate("/error");
-            return;
-        }
+    // Reusable function to fetch allowed pages for the logged-in user
+    const fetchMyPages = useCallback(async () => {
+        try {
+            const response = await axiosInstance.get("/api/access-control/my-pages");
+            const pageNames = response.data.map((page) => page.name); // ["overview", "details", "access-management", ...]
 
-        const fetchPageAccess = async () => {
-            try {
-                const response = await axiosInstance.get("/api/access-control/page-data", {
-                    params: { adminId }
-                });
+            setAllowedPages(pageNames);
 
-                const allowedPageIds = response.data
-                    .filter(page => page.admin_id === parseInt(adminId))
-                    .map(page => page.page_id);
+            // Ensure activeContent is still allowed
+            setActiveContent((prev) => {
+                if (pageNames.includes(prev)) return prev;
+                return pageNames[0] || "overview";
+            });
 
-                const pageNames = allowedPageIds.map(pageId => {
-                    if (pageId === 1) return "overview";
-                    if (pageId === 2) return "details";
-                    return null;
-                }).filter(Boolean);
+            setLoading(false);
+        } catch (error) {
+            console.error("Error fetching access control:", error);
+            setLoading(false);
 
-                setAllowedPages(pageNames);
-                setLoading(false);
-            } catch (error) {
-                console.error("Error fetching access control:", error);
-                setLoading(false);
+            if (error.response && error.response.status === 401) {
+                // Not authenticated / token invalid
+                alert("Your session has expired. Please log in again.");
+                navigate("/login");
+            } else {
+                navigate("/error");
             }
-        };
-
-        fetchPageAccess();
+        }
     }, [navigate]);
 
+    // Initial auth/role + first fetch of allowed pages
+    useEffect(() => {
+        const userRole = localStorage.getItem("userRole");
+        setRole(userRole || null);
+
+        fetchMyPages();
+    }, [fetchMyPages]);
+
+    // Restore sidebar visibility and active content (optional)
     useEffect(() => {
         const savedSidebarVisibility = localStorage.getItem("isSidebarVisible");
         const savedActiveContent = localStorage.getItem("activeContent");
@@ -86,15 +94,12 @@ const Dashboard = () => {
 
     const handleMenuClick = (menuItem) => {
         if (menuItem === "logout") {
-            localStorage.removeItem("authToken");
-            localStorage.removeItem("adminId");
-            localStorage.removeItem("isSidebarVisible");
-            localStorage.removeItem("activeContent");
             navigate("/login");
-        } else {
-            setActiveContent(menuItem);
-            localStorage.setItem("activeContent", menuItem);
+            return;
         }
+
+        setActiveContent(menuItem);
+        localStorage.setItem("activeContent", menuItem);
     };
 
     const renderContent = () => {
@@ -108,9 +113,13 @@ const Dashboard = () => {
 
         switch (activeContent) {
             case "overview":
-                return <OverviewContent />;
+                return <OverviewContent role={role} />;
             case "details":
-                return <DataDetailsContent />;
+                return <DataDetailsContent role={role} />;
+            case "access-management":
+                return <RoleManagement role={role} onAccessUpdated={fetchMyPages} />;
+            case "user-list":
+                return <UserListPage role={role} />;
             default:
                 return <ErrorComponent />;
         }
@@ -123,6 +132,8 @@ const Dashboard = () => {
                 toggleSidebar={toggleSidebar}
                 isSidebarVisible={isSidebarVisible}
                 activeContent={activeContent}
+                role={role}
+                allowedPages={allowedPages}
             />
 
             <div style={styles.mainContent}>
@@ -135,10 +146,19 @@ const Dashboard = () => {
                     {renderContent()}
                 </div>
 
-                {isSidebarVisible && <Sidebar isMobile={isMobile} />}
+                {isSidebarVisible && (
+                    <Sidebar
+                        isMobile={isMobile}
+                        role={role}
+                        allowedPages={allowedPages}
+                    />
+                )}
 
                 {isMobile && isSidebarVisible && (
-                    <div style={styles.overlay} onClick={() => setIsSidebarVisible(false)} />
+                    <div
+                        style={styles.overlay}
+                        onClick={() => setIsSidebarVisible(false)}
+                    />
                 )}
             </div>
         </div>
@@ -155,14 +175,16 @@ const styles = {
         display: "flex",
         flex: 1,
         overflow: "hidden",
-        position: "relative", // Important for absolute positioning of sidebar
+        position: "relative",
     },
     contentContainer: {
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
+        alignItems: "stretch",
+        justifyContent: "flex-start",
         backgroundColor: "#f4f4f4",
+        padding: "20px",
+        overflowY: "auto",
         transition: "width 0.3s ease",
     },
     overlay: {
@@ -171,8 +193,8 @@ const styles = {
         left: 0,
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent black
-        zIndex: 999, // Ensure the overlay is above other content
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        zIndex: 999,
     },
 };
 
