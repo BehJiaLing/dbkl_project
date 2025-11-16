@@ -56,10 +56,40 @@ const OverviewContent = () => {
     const fetchData = async () => {
         try {
             const response = await axiosInstance.get('/api/user/user-data');
-            setUsers(response.data);
 
-            const addressPromises = response.data.map(async (user) => {
-                const address = await getAddressFromCoordinates(user.latitude, user.longitude);
+            // Normalize latitude and longitude to numbers to avoid "Invalid LatLng"
+            const normalizedUsers = (response.data || []).map((user) => {
+                const latNum =
+                    user.latitude !== undefined && user.latitude !== null
+                        ? Number(user.latitude)
+                        : null;
+                const lonNum =
+                    user.longitude !== undefined && user.longitude !== null
+                        ? Number(user.longitude)
+                        : null;
+
+                return {
+                    ...user,
+                    latitude: latNum,
+                    longitude: lonNum,
+                };
+            });
+
+            setUsers(normalizedUsers);
+
+            const validUsersForAddress = normalizedUsers.filter(
+                (u) =>
+                    u.latitude !== null &&
+                    !Number.isNaN(u.latitude) &&
+                    u.longitude !== null &&
+                    !Number.isNaN(u.longitude)
+            );
+
+            const addressPromises = validUsersForAddress.map(async (user) => {
+                const address = await getAddressFromCoordinates(
+                    user.latitude,
+                    user.longitude
+                );
                 return { ic: user.ic, address };
             });
 
@@ -77,7 +107,7 @@ const OverviewContent = () => {
     useEffect(() => {
         fetchData();
 
-        // Set up interval to fetch data every 1 minutes
+        // Set up interval to fetch data every 1 minute
         const intervalId = setInterval(fetchData, 60000);
 
         // Clean up the interval when the component unmounts
@@ -87,10 +117,21 @@ const OverviewContent = () => {
     // Function to fetch address using nominatim openstreetmap API
     const getAddressFromCoordinates = async (latitude, longitude) => {
         try {
-            const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+            if (
+                latitude === null ||
+                longitude === null ||
+                Number.isNaN(latitude) ||
+                Number.isNaN(longitude)
+            ) {
+                return { name: 'Name not found', display_name: 'Address not found' };
+            }
+
+            const response = await axios.get(
+                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
             return {
                 name: response.data.name || 'Name not found',
-                display_name: response.data.display_name || 'Address not found'
+                display_name: response.data.display_name || 'Address not found',
             };
         } catch (error) {
             console.error('Error fetching address:', error);
@@ -100,8 +141,15 @@ const OverviewContent = () => {
 
     // set offset to have multiple user pointer
     const getOffsetCoordinates = (latitude, longitude, index) => {
+        const lat = Number(latitude);
+        const lon = Number(longitude);
+
+        if (Number.isNaN(lat) || Number.isNaN(lon)) {
+            return null;
+        }
+
         const offset = index * 0.00001; // Small offset for each user
-        return [latitude + offset, longitude + offset];
+        return [lat + offset, lon + offset];
     };
 
     // Function to handle the filter change
@@ -116,13 +164,18 @@ const OverviewContent = () => {
 
     // Filter users based on search and selected status filter
     const filteredUsers = users.filter((user) => {
-        const userAddress = addresses[user.ic] || {};
-        const userFullAddress = user.address || ''; // Get user.address
+        const userAddressObj = addresses[user.ic] || {};
+        const userFullAddress = user.address || ''; // Get user.address from DB
 
         const matchesSearch =
-            user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (userAddress.display_name && userAddress.display_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            userFullAddress.toLowerCase().includes(searchQuery.toLowerCase()); // Check user.address
+            (user.username || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (userAddressObj.display_name &&
+                userAddressObj.display_name
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase())) ||
+            userFullAddress.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesStatus = filter === 'all' || user.status === filter;
 
@@ -131,60 +184,107 @@ const OverviewContent = () => {
 
     return (
         <div style={styles.overviewContainer}>
-            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', marginBottom: '20px' }} >
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
+                    marginBottom: '20px',
+                }}
+            >
                 <div style={styles.mapContainer}>
-                    <MapContainer center={[4.5, 102]} zoom={7} style={{ height: '400px', width: '100%' }}>
-                        <div style={isMobile ? styles.statusMobileExplanation : styles.statusExplanation}>
+                    <MapContainer
+                        center={[4.5, 102]}
+                        zoom={7}
+                        style={{ height: '400px', width: '100%' }}
+                    >
+                        <div
+                            style={
+                                isMobile
+                                    ? styles.statusMobileExplanation
+                                    : styles.statusExplanation
+                            }
+                        >
                             <h3>Status Legend</h3>
-                            <p><span style={styles.greenDot}></span> Green: All Checked!</p>
-                            <p><span style={styles.yellowDot}></span> Yellow: Address Failed!</p>
-                            <p><span style={styles.redDot}></span> Red: Haven't Submit!</p>
+                            <p>
+                                <span style={styles.greenDot}></span> Green: All Checked!
+                            </p>
+                            <p>
+                                <span style={styles.yellowDot}></span> Yellow: Address
+                                Failed!
+                            </p>
+                            <p>
+                                <span style={styles.redDot}></span> Red: Haven&apos;t
+                                Submit!
+                            </p>
                         </div>
                         <TileLayer
                             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                         />
-                        {Array.isArray(filteredUsers) && filteredUsers.map((user, index) => (
-                            <Marker
-                                key={user.ic}
-                                position={getOffsetCoordinates(user.latitude, user.longitude, index)} // Slight offset
-                                icon={createCustomIcon(user.status)} // Set icon based on status
-                            >
-                                {/* using OpenStreetMap get the address link */}
-                                <Popup>
-                                    <div>
-                                        Name: {user.username} <br />
-                                        Staus: {user.status.toUpperCase()} <br />
-                                        {user.address && (
-                                            <>
-                                                Location: {user.address} <br />
-                                            </>
-                                        )}
-                                        {user.address && (
-                                            <a
-                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(user.address || `${user.latitude},${user.longitude}`)}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                View on Google Maps
-                                            </a>
-                                        )}
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        ))}
+                        {Array.isArray(filteredUsers) &&
+                            filteredUsers.map((user, index) => {
+                                const position = getOffsetCoordinates(
+                                    user.latitude,
+                                    user.longitude,
+                                    index
+                                );
+                                if (!position) return null; // skip invalid coords
+
+                                return (
+                                    <Marker
+                                        key={user.ic}
+                                        position={position}
+                                        icon={createCustomIcon(user.status)} // Set icon based on status
+                                    >
+                                        <Popup>
+                                            <div>
+                                                Name: {user.username} <br />
+                                                Status: {user.status.toUpperCase()} <br />
+                                                {user.address && (
+                                                    <>
+                                                        Location: {user.address} <br />
+                                                    </>
+                                                )}
+                                                {user.address && (
+                                                    <a
+                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                            user.address ||
+                                                            `${user.latitude},${user.longitude}`
+                                                        )}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        View on Google Maps
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                );
+                            })}
                     </MapContainer>
                 </div>
             </div>
 
             <div style={styles.filterContainer}>
-                <div style={isMobile ? styles.filter2MobileContainer : styles.filter2Container}>
-                    <div style={isMobile ? styles.leftMobileContainer : styles.leftContainer}>
-                        <h3>
-                            Overview to All User's Status
-                        </h3>
+                <div
+                    style={
+                        isMobile ? styles.filter2MobileContainer : styles.filter2Container
+                    }
+                >
+                    <div
+                        style={
+                            isMobile ? styles.leftMobileContainer : styles.leftContainer
+                        }
+                    >
+                        <h3>Overview to All User&apos;s Status</h3>
                     </div>
-                    <div style={isMobile ? styles.rightMobileContainer : styles.rightContainer}>
+                    <div
+                        style={
+                            isMobile ? styles.rightMobileContainer : styles.rightContainer
+                        }
+                    >
                         <select
                             id="statusFilter"
                             value={filter}
@@ -207,14 +307,16 @@ const OverviewContent = () => {
                 </div>
             </div>
 
-            <div style={isMobile ? styles.tableMobileContainer : styles.tableContainer}>
+            <div
+                style={isMobile ? styles.tableMobileContainer : styles.tableContainer}
+            >
                 <table style={styles.table}>
                     <thead>
                         <tr>
                             <th style={styles.th}>Name</th>
                             <th style={styles.th}>Status</th>
                             <th style={styles.th}>Location Name</th>
-                            <th style={styles.th}>Full Address</th>
+                            {/* <th style={styles.th}>Full Address</th> */}
                         </tr>
                     </thead>
                     <tbody>
@@ -223,10 +325,16 @@ const OverviewContent = () => {
                             return (
                                 <tr key={user.ic}>
                                     <td style={styles.td}>{user.username}</td>
-                                    <td style={styles.td}>{user.status.toUpperCase()}</td>
-                                    {/* <td style={styles.td}>{userAddress.name || 'Fetching name...'}</td> */}
+                                    <td style={styles.td}>
+                                        {user.status
+                                            ? user.status.toUpperCase()
+                                            : ''}
+                                    </td>
                                     <td style={styles.td}>{user.address}</td>
-                                    <td style={styles.td}>{userAddress.display_name || 'Fetching address...'}</td>
+                                    {/* <td style={styles.td}>
+                                        {userAddress.display_name ||
+                                            'Fetching address...'}
+                                    </td> */}
                                 </tr>
                             );
                         })}
@@ -308,7 +416,7 @@ const styles = {
         backgroundColor: "#f9f9f9",
         borderRadius: "10px",
         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-        marginBottom: "20px", // Add space between sections
+        marginBottom: "20px",
     },
     filter2Container: {
         display: "flex",
@@ -316,7 +424,7 @@ const styles = {
         justifyContent: "space-between",
         alignItems: "center",
         padding: "10px 20px",
-        width: "100%"
+        width: "100%",
     },
     filter2MobileContainer: {
         display: "flex",
@@ -324,10 +432,10 @@ const styles = {
         justifyContent: "space-between",
         alignItems: "center",
         padding: "10px 20px",
-        width: "100%"
+        width: "100%",
     },
     leftContainer: {
-        width: "40%"
+        width: "40%",
     },
     leftMobileContainer: {
         width: "100%",
@@ -336,14 +444,14 @@ const styles = {
         display: "flex",
         flexDirection: "row",
         width: "60%",
-        gap: "20px"
+        gap: "20px",
     },
     rightMobileContainer: {
         display: "flex",
         flexDirection: "row",
         width: "100%",
         gap: "10px",
-        paddingBottom: "20px"
+        paddingBottom: "20px",
     },
     statusLabel: {
         fontSize: "14px",
@@ -378,7 +486,7 @@ const styles = {
     tableMobileContainer: {
         width: "100%",
         maxWidth: "100%",
-        overflowX: "auto"
+        overflowX: "auto",
     },
     table: {
         width: "100%",

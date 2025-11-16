@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from './axiosConfig';
+import axiosInstance from "./axiosConfig";
 
 const API_KEY = "BToNdHB1ok4umLD2P0UpgXjB4RLI0yWD";
 const API_SECRET = "_C8seFzywSZgJMNMJMY1w7XAkqMbs3IP";
@@ -33,91 +33,70 @@ const VerifyForm = () => {
         navigate("/camera");
     };
 
+    // ---- API HELPERS --------------------------------------------------------
+
     const updateUserStatus = async (ic, status) => {
         try {
-            const response = await axiosInstance.put(`/api/user/update-status`, {
+            const res = await axiosInstance.put("/api/user/update-status", {
                 ic,
                 status,
             });
 
-            if (response.status !== 200) {
-                alert(response.data.message || "Failed to update status. Please try again.");
+            if (res.status !== 200) {
+                const msg =
+                    res.data?.message ||
+                    "Failed to update status. Please try again.";
+                throw new Error(msg);
             }
         } catch (error) {
-            console.error("Error updating status:", error);
-            alert(error.response?.data?.message || "Failed to update status. Please try again.");
+            const msg =
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to update status. Please try again.";
+            throw new Error(msg);
         }
     };
 
-    // const updateUserStatus = async (ic, status) => {
-    //     try {
-    //         const response = await fetch(`http://localhost:3001/api/user/update-status`, {
-    //             method: 'PUT',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //             },
-    //             body: JSON.stringify({ ic, status }),
-    //         });
-
-    //         if (!response.ok) {
-    //             const errorData = await response.json();
-    //             alert(errorData.message || "Failed to update status. Please try again.");
-    //         }
-    //     } catch (error) {
-    //         console.error("Error updating status:", error);
-    //         alert("Failed to update status. Please try again.");
-    //     }
-    // };
-
-    const incrementSubmitAttend = async (ic, status) => {
+    const incrementSubmitAttend = async (ic) => {
         try {
-            const response = await axiosInstance.put(`/api/user/increment-submit-attend`, {
-                ic,
-            });
+            const res = await axiosInstance.put(
+                "/api/user/increment-submit-attend",
+                { ic }
+            );
 
-            if (response.status !== 200) {
-                alert(response.data.message || "Failed to increment submission. Please try again.");
-            } else if (response.data.message === 'Maximum submit attempts reached') {
-                alert("You have reached the maximum submission attempts.");
+            if (res.status !== 200) {
+                const msg =
+                    res.data?.message ||
+                    "Failed to increment submission. Please try again.";
+                throw new Error(msg);
+            }
+
+            if (res.data?.message === "Maximum submit attempts reached") {
+                throw new Error("Maximum submit attempts reached");
             }
         } catch (error) {
-            console.error("Error updating submitAttend:", error);
-            alert(error.response?.data?.message || "Failed to increment submission. Please try again.");
+            const msg =
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to increment submission. Please try again.";
+            throw new Error(msg);
         }
     };
 
-    // const incrementSubmitAttend = async (ic) => {
-    //     try {
-    //         const response = await fetch(`http://localhost:3001/api/user/increment-submit-attend`, {
-    //             method: 'PUT',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //             },
-    //             body: JSON.stringify({ ic }),
-    //         });
+    // ------------------------------------------------------------------------
 
-    //         const result = await response.json();
-    //         if (!response.ok) {
-    //             alert(result.message || "Failed to increment submission. Please try again.");
-    //         } else if (result.message === 'Maximum submit attempts reached') {
-    //             alert("You have reached the maximum submission attempts.");
-    //         }
-    //     } catch (error) {
-    //         console.error("Error updating submitAttend:", error);
-    //         alert("Failed to increment submission. Please try again.");
-    //     }
-    // };
-
-    const isWithinDistance = (lat1, lon1, lat2, lon2, tolerance) => {
-        const earthRadius = 6371; // Radius of the earth in km
+    const isWithinDistance = (lat1, lon1, lat2, lon2, toleranceKm) => {
+        const earthRadius = 6371; // km
         const dLat = (lat2 - lat1) * (Math.PI / 180);
         const dLon = (lon2 - lon1) * (Math.PI / 180);
-        const a = Math.sin(dLat / 2) ** 2 +
-                  Math.cos(lat1 * (Math.PI / 180)) *
-                  Math.cos(lat2 * (Math.PI / 180)) *
-                  Math.sin(dLon / 2) ** 2;
+        const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * (Math.PI / 180)) *
+            Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) ** 2;
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return (earthRadius * c) <= tolerance; // Returns true if within tolerance
+        const distance = earthRadius * c;
+        return distance <= toleranceKm;
     };
 
     const verifyFaceWithFacePlusPlus = async (imageUrl1, imageUrl2) => {
@@ -127,48 +106,46 @@ const VerifyForm = () => {
         formData.append("image_url1", imageUrl1);
         formData.append("image_url2", imageUrl2);
 
-        try {
-            const response = await fetch("https://api-us.faceplusplus.com/facepp/v3/compare", {
+        const response = await fetch(
+            "https://api-us.faceplusplus.com/facepp/v3/compare",
+            {
                 method: "POST",
                 body: formData,
-            });
-            return await response.json();
-        } catch (error) {
-            console.error("Error in verifyFaceWithFacePlusPlus:", error);
-            throw new Error('Face verification failed');
-        }
+            }
+        );
+        return await response.json();
     };
 
     const uploadImageToImgbb = async (imageData) => {
         if (typeof imageData !== "string") {
             console.error("Invalid image data provided:", imageData);
-            return null; // Return null if invalid
+            return null;
         }
-        
-        const apiKey = "c76cdeefbf39db597e37f74329a4138b"; // Replace with your Imgbb API key
-        const cleanedImageData = imageData.replace(/^data:image\/\w+;base64,/, "");
+
+        const apiKey = "c76cdeefbf39db597e37f74329a4138b"; // your Imgbb key
+        const cleanedImageData = imageData.replace(
+            /^data:image\/\w+;base64,/,
+            ""
+        );
 
         const formData = new FormData();
         formData.append("key", apiKey);
         formData.append("image", cleanedImageData);
 
-        try {
-            const response = await fetch("https://api.imgbb.com/1/upload", {
-                method: "POST",
-                body: formData,
-            });
-            const result = await response.json();
-            if (result.success) {
-                return result.data.url; // Return the uploaded image URL
-            } else {
-                console.error("Failed to upload image to Imgbb:", result.message);
-                return null; // Return null if failed
-            }
-        } catch (error) {
-            console.error("Error uploading image to Imgbb:", error);
-            return null; // Return null if an error occurs
+        const response = await fetch("https://api.imgbb.com/1/upload", {
+            method: "POST",
+            body: formData,
+        });
+        const result = await response.json();
+        if (result.success) {
+            return result.data.url;
+        } else {
+            console.error("Failed to upload image to Imgbb:", result.message);
+            return null;
         }
     };
+
+    const normalizeIc = (v) => (v || "").toString().replace(/\D/g, "");
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -181,98 +158,144 @@ const VerifyForm = () => {
         setLoading(true);
 
         try {
-            const response = await axiosInstance.get('/api/user/user-data');
-            const data = response.data;
-            //const response = await fetch('http://localhost:3001/api/user/user-data');
-            //const data = await response.json();
-            const user = data.find(user => user.ic === parseInt(ic, 10));
+            // 1) Get all users (already decrypted by backend)
+            const res = await axiosInstance.get("/api/user/user-data");
+            const data = res.data || [];
 
-            if (user) {
-                if (user.submitAttend >= 3) {
-                    alert("You have reached the maximum submission attempts.");
-                    setLoading(false);
-                    return;
-                }
+            const user = data.find(
+                (u) => normalizeIc(u.ic) === normalizeIc(ic)
+            );
 
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    const userLatitude = position.coords.latitude;
-                    const userLongitude = position.coords.longitude;
+            if (!user) {
+                alert("Invalid IC Number: Please enter a valid IC number.");
+                setLoading(false);
+                return;
+            }
 
-                    const locationStatus = isWithinDistance(user.latitude, user.longitude, userLatitude, userLongitude, 0.1)
-                        ? "matched"
-                        : "does not match";
+            if (user.deleted) {
+                alert(
+                    "Your account has been disabled. Please contact the administrator."
+                );
+                setLoading(false);
+                return;
+            }
 
-                    const uploadedImageData = localStorage.getItem("tempImageData");
-                    const originalImageData = user.imageOri;
+            if (user.submitAttend >= 3) {
+                alert("You have reached the maximum submission attempts.");
+                setLoading(false);
+                return;
+            }
 
-                    if (!originalImageData) {
-                        alert("Original image data is missing.");
+            // 2) Get current location
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    try {
+                        const userLatitude = position.coords.latitude;
+                        const userLongitude = position.coords.longitude;
+
+                        const latStored = Number(user.latitude);
+                        const lonStored = Number(user.longitude);
+
+                        const locationStatus = isWithinDistance(
+                            latStored,
+                            lonStored,
+                            userLatitude,
+                            userLongitude,
+                            0.1 // ~100m
+                        )
+                            ? "matched"
+                            : "does not match";
+
+                        const uploadedImageData =
+                            localStorage.getItem("tempImageData");
+                        const originalImageUrl = user.image; // data:image/jpeg;base64,...
+
+                        if (!originalImageUrl) {
+                            throw new Error("Original image data is missing.");
+                        }
+
+                        const originalImageUploadUrl =
+                            await uploadImageToImgbb(originalImageUrl);
+                        const uploadedImageUrl =
+                            await uploadImageToImgbb(uploadedImageData);
+
+                        if (!uploadedImageUrl || !originalImageUploadUrl) {
+                            throw new Error(
+                                "Failed to upload the images. Please try again."
+                            );
+                        }
+
+                        const isImageMatched =
+                            await verifyFaceWithFacePlusPlus(
+                                uploadedImageUrl,
+                                originalImageUploadUrl
+                            );
+
+                        const confidence = isImageMatched.confidence || 0;
+                        console.log(
+                            "Face Verification Result:",
+                            isImageMatched
+                        );
+
+                        // 3) Decide status
+                        let newStatus = "red";
+                        let message = "";
+
+                        if (locationStatus === "matched" && confidence > 50) {
+                            newStatus = "green";
+                            message =
+                                "Submitted Successfully: Location and image matched.";
+                        } else if (
+                            locationStatus === "does not match" &&
+                            confidence > 50
+                        ) {
+                            newStatus = "yellow";
+                            message =
+                                "Submitted Successfully: Location does not match; Image matched.";
+                        } else if (
+                            locationStatus === "matched" &&
+                            confidence <= 50
+                        ) {
+                            newStatus = "red";
+                            message =
+                                "Submitted Successfully: Location matched; Image does not match.";
+                        } else {
+                            newStatus = "red";
+                            message =
+                                "Submitted Successfully: Location and image does not match.";
+                        }
+
+                        // 4) Update backend (status + submitAttend)
+                        await updateUserStatus(user.ic, newStatus);
+                        await incrementSubmitAttend(user.ic);
+
+                        alert(message);
+
+                        // 5) Reset form state
+                        setIc("");
+                        localStorage.removeItem("tempImageData");
+                        setIsImageUploaded(false);
+                        localStorage.removeItem("icValue");
                         setLoading(false);
-                        return;
-                    }
-
-                    // Convert original image data (array of bytes) to Base64 using Uint8Array
-                    const byteCharacters = new Uint8Array(originalImageData.data);
-                    let binaryString = '';
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        binaryString += String.fromCharCode(byteCharacters[i]);
-                    }
-                    const originalImageBase64 = btoa(binaryString);
-                    const originalImageUrl = `data:image/jpeg;base64,${originalImageBase64}`;
-
-                    // Upload the original image to Imgbb and get the URL
-                    const originalImageUploadUrl = await uploadImageToImgbb(originalImageUrl);
-                    const uploadedImageUrl = await uploadImageToImgbb(uploadedImageData);
-
-                    // Log the original image URL
-                    console.log("Original Image URL: ", originalImageUploadUrl);
-                    console.log("Uploaded Image URL: ", uploadedImageUrl);
-
-                    if (!uploadedImageUrl || !originalImageUploadUrl) {
-                        alert("Failed to upload the images. Please try again.");
+                    } catch (err) {
+                        console.error("Verification flow error:", err);
+                        alert(err.message || "Verification failed.");
                         setLoading(false);
-                        return;
                     }
-
-                    const isImageMatched = await verifyFaceWithFacePlusPlus(uploadedImageUrl, originalImageUploadUrl);
-                    console.log("Face Verification Result:", isImageMatched);
-
-                    if (locationStatus === "matched" && isImageMatched.confidence > 50) {
-                        await updateUserStatus(user.ic, "green");
-                        await incrementSubmitAttend(user.ic);
-                        alert("Submitted Successfully: Location and image matched.");
-                    } else if (locationStatus === "does not match" && isImageMatched.confidence > 50) {
-                        await updateUserStatus(user.ic, "yellow");
-                        await incrementSubmitAttend(user.ic);
-                        alert("Submitted Successfully: Location does not match; Image matched.");
-                    } else if (locationStatus === "matched" && isImageMatched.confidence < 50) {
-                        await updateUserStatus(user.ic, "red");
-                        await incrementSubmitAttend(user.ic);
-                        alert("Submitted Successfully: Location matched; Image does not match.");
-                    } else if (locationStatus === "does not match" && isImageMatched.confidence < 50) {
-                        await updateUserStatus(user.ic, "red");
-                        await incrementSubmitAttend(user.ic);
-                        alert("Submitted Successfully: Location and image does not match.");
-                    }
-
-                    // Reset form state
-                    setIc("");
-                    localStorage.removeItem("tempImageData");
-                    setIsImageUploaded(false);
-                    localStorage.removeItem("icValue"); // Clear IC value from localStorage
-                    setLoading(false);
-                }, (error) => {
+                },
+                (error) => {
                     console.error("Error getting location:", error);
                     alert("Failed to retrieve location. Please try again.");
                     setLoading(false);
-                });
-            } else {
-                alert("Invalid IC Number: Please enter a valid IC number.");
-                setLoading(false);
-            }
+                }
+            );
         } catch (error) {
             console.error("Error fetching user data:", error);
-            alert("Failed to fetch user data. Please try again.");
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to fetch user data. Please try again."
+            );
             setLoading(false);
         }
     };
@@ -294,19 +317,27 @@ const VerifyForm = () => {
                         />
                     </div>
                     <div style={styles.inputGroup}>
-                        <button type="button" onClick={handleCameraNavigation} style={styles.button}>
+                        <button
+                            type="button"
+                            onClick={handleCameraNavigation}
+                            style={styles.button}
+                        >
                             Upload Image
                         </button>
                     </div>
-                    <button type="submit" style={styles.submitButton} disabled={loading}>
+                    <button
+                        type="submit"
+                        style={styles.submitButton}
+                        disabled={loading}
+                    >
                         {loading ? "Submitting..." : "Submit"}
                     </button>
                 </form>
             </div>
         </div>
     );
-}
-// Inline styles
+};
+
 const styles = {
     pageWrapper: {
         height: "100vh",

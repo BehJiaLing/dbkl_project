@@ -1,24 +1,17 @@
 import React, { useState, useEffect } from "react";
 import PointFilter from "./components/pointfilter"; // Assuming you have this component
-import axiosInstance from './axiosConfig'; 
+import axiosInstance from './axiosConfig';
 import axios from "axios";
 
 const DataDetailsContent = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [filter, setFilter] = useState("all");
-    const [data, setData] = useState([]); 
-    const [loading, setLoading] = useState(true); 
-    const [error, setError] = useState(null); 
-    const [addresses, setAddresses] = useState({});
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [data, setData] = useState([]); // This will hold data fetched from the database
+    const [loading, setLoading] = useState(true); // To track loading state
+    const [error, setError] = useState(null); // To track any errors
+    const [addresses, setAddresses] = useState({}); // State to hold fetched addresses
 
-    // Check for mobile view on resize
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth <= 768);
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
-
+    // Fetch data from the backend
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -26,6 +19,8 @@ const DataDetailsContent = () => {
                 const mappedData = response.data.map(item => ({
                     personName: item.username,
                     ic: item.ic,
+                    status: item.status,
+                    submitAttempt: item.submitAttend,
                     address: item.address,
                     latitude: item.latitude,
                     longitude: item.longitude,
@@ -34,6 +29,7 @@ const DataDetailsContent = () => {
                 }));
                 setData(mappedData);
 
+                // Fetch addresses after getting the data
                 const addressPromises = mappedData.map(async (item) => {
                     const address = await getAddressFromCoordinates(item.latitude, item.longitude);
                     return { ic: item.ic, address };
@@ -56,6 +52,7 @@ const DataDetailsContent = () => {
         fetchData();
     }, []);
 
+    // Function to fetch address using nominatim openstreetmap API
     const getAddressFromCoordinates = async (latitude, longitude) => {
         try {
             const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
@@ -77,10 +74,11 @@ const DataDetailsContent = () => {
         setFilter(event.target.value);
     };
 
+    // Filter the data based on the search term and the selected point filter
     const filteredData = data.filter((item) => {
         const matchesSearchTerm =
             (item.personName && item.personName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (item.ic && typeof item.ic === "string" && item.ic.includes(searchTerm));
+            (item.status && item.status.toLowerCase().includes(searchTerm.toLowerCase()));
 
         const matchesFilter = filter === "all" || item.pointType === filter;
 
@@ -98,30 +96,34 @@ const DataDetailsContent = () => {
     return (
         <div style={styles.container}>
             <div style={styles.searchFilterContainer}>
+                {/* Search input on the left */}
                 <div style={styles.searchContainer}>
                     <input
                         type="text"
                         value={searchTerm}
                         onChange={handleSearch}
-                        placeholder="Search by name, IC, location, or address"
+                        placeholder="Search by name, location, or address"
                         style={styles.searchInput}
                     />
                 </div>
+
+                {/* Filter component on the right */}
                 <div style={styles.filterContainer}>
                     <PointFilter filter={filter} onChange={handleFilterChange} />
                 </div>
             </div>
 
-            <div style={styles.tableWrapper}>
+            {/* Table */}
+            <div style={styles.tableContainer}>
                 <table style={styles.table}>
                     <thead>
                         <tr>
                             <th style={styles.th}>Person Name</th>
-                            <th style={styles.th}>IC</th>
+                            <th style={styles.th}>Status</th>
+                            <th style={styles.th}>Submit Attempt</th>
                             <th style={styles.th}>Location Name</th>
                             <th style={styles.th}>Full Address</th>
                             <th style={styles.th}>Coordinates</th>
-                            <th style={styles.th}>Uploaded Time</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -131,12 +133,12 @@ const DataDetailsContent = () => {
                                 return (
                                     <tr key={index}>
                                         <td style={styles.td}>{item.personName}</td>
-                                        <td style={styles.td}>{item.ic}</td>
+                                        <td style={styles.td}>{item.status}</td>
+                                        <td style={styles.td}>{item.submitAttempt}</td>
                                         <td style={styles.td}>{item.address}</td>
                                         {/* <td style={styles.td}>{addressInfo.name || 'Fetching name...'}</td> */}
                                         <td style={styles.td}>{addressInfo.display_name || 'Fetching address...'}</td>
                                         <td style={styles.td}>{`${item.latitude}, ${item.longitude}`}</td>
-                                        <td style={styles.td}>{item.uploadedTime}</td>
                                     </tr>
                                 );
                             })
@@ -171,7 +173,7 @@ const styles = {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: "10px",
+        marginBottom: "10px", // Reduced the space between the search/filter and the table
         boxSizing: "border-box",
     },
     searchContainer: {
@@ -195,14 +197,23 @@ const styles = {
         alignItems: "center",
         marginLeft: "20px",
     },
-    tableWrapper: {
-        width: "100%",
-        overflowX: "auto", // Enables horizontal scrolling
+    tableContainer: {
+        width: "90%",
+        maxWidth: "1200px",
+        height: "400px",
+        overflowY: "auto",
+        marginTop: "10px", // Reduced the space between the search/filter and the table
+        border: "1px solid #ddd",
+        boxSizing: "border-box",
+        backgroundColor: "#fff",
+        borderRadius: "5px",
+        boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
     },
     table: {
         width: "100%",
-        borderCollapse: "collapse",
-        tableLayout: "auto", // Allows columns to resize based on content
+        borderCollapse: "separate",
+        borderSpacing: "0 5px",
+        tableLayout: "fixed",
     },
     th: {
         border: "1px solid #ddd",
@@ -214,17 +225,12 @@ const styles = {
         position: "sticky",
         top: "0",
         zIndex: "1",
-        whiteSpace: "nowrap",
     },
     td: {
         border: "1px solid #ddd",
         padding: "8px",
         textAlign: "left",
         backgroundColor: "transparent",
-        wordWrap: "break-word", // Allow text wrapping
-        overflow: "hidden",
-        textOverflow: "ellipsis", // Add ellipsis for long text
-        whiteSpace: "normal", // Allow text wrapping
     },
     noDataTd: {
         textAlign: "center",
