@@ -37,7 +37,7 @@ const Dashboard = () => {
     const fetchMyPages = useCallback(async () => {
         try {
             const response = await axiosInstance.get("/api/access-control/my-pages");
-            const pageNames = response.data.map((page) => page.name); // ["overview", "details", "access-management", ...]
+            const pageNames = response.data.map((page) => page.name); 
 
             setAllowedPages(pageNames);
 

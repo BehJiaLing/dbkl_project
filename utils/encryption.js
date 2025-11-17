@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 
-// 32-byte key for AES-256; store in .env as base64 or hex
-const ENCRYPTION_KEY = Buffer.from(process.env.ENC_KEY, "base64"); // 32 bytes
+// 32-byte key for AES-256; store in .env as base64
+const ENCRYPTION_KEY = Buffer.from(process.env.ENC_KEY, "base64"); 
 const IV_LENGTH = 16; // AES block size
 
 function encrypt(text) {
