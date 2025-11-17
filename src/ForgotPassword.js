@@ -14,6 +14,10 @@ const ForgotPassword = () => {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    const goToLogin = () => {
+        navigate("/login");
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -68,6 +72,18 @@ const ForgotPassword = () => {
                         {isLoading ? "Sending..." : "Send Reset Link"}
                     </button>
                 </form>
+
+                {/* Login under form */}
+                <div style={styles.loginWrapper}>
+                    <button
+                        type="button"
+                        onClick={goToLogin}
+                        style={styles.linkButton}
+                    >
+                        Go To Login?
+                    </button>
+                </div>
+
             </div>
         </div>
     );
@@ -145,6 +161,18 @@ const styles = {
         fontSize: "16px",
         height: "35px",
         boxSizing: "border-box",
+    },
+    loginWrapper: {
+        marginTop: "10px",
+        textAlign: "center",
+    },
+    linkButton: {
+        background: "none",
+        border: "none",
+        color: "#00b3a7",
+        cursor: "pointer",
+        fontSize: "13px",
+        textDecoration: "underline",
     },
     button: {
         width: "70%",
