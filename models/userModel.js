@@ -42,27 +42,6 @@ const UserModel = {
         return result;
     },
 
-    // getActiveUsers: async () => {
-    //     const [rows] = await db.query(`
-    //         SELECT
-    //             id,
-    //             ic,
-    //             username,
-    //             address,
-    //             latitude,
-    //             longitude,
-    //             imageOri,
-    //             status,
-    //             submitAttend,
-    //             deleted,
-    //             created_at
-    //         FROM user
-    //         WHERE deleted = 0
-    //         ORDER BY id ASC
-    //     `);
-    //     return rows;
-    // },
-
     softDeleteUser: async (id) => {
         await db.query("UPDATE user SET deleted = 1 WHERE id = ?", [id]);
     },
